@@ -1,0 +1,8 @@
+[
+  {"id": 1, "task": "Translate 'good morning' to Spanish", "expected": "buenos d\u00edas", "level": "easy"},
+  {"id": 2, "task": "What is the capital of Japan?", "expected": "Tokyo", "level": "easy"},
+  {"id": 3, "task": "How many continents are there?", "expected": "7", "level": "easy"},
+  {"id": 4, "task": "Convert 100 Fahrenheit to Celsius (give the number)", "expected": "37", "level": "easy"},
+  {"id": 5, "task": "Analyze the main causes of inflation and explain how central banks typically respond.", "expected": "", "level": "hard"},
+  {"id": 6, "task": "Compare REST and GraphQL APIs and explain when to use each.", "expected": "", "level": "hard"}
+]
