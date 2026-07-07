@@ -1,7 +1,5 @@
-fastapi
-uvicorn[standard]
-requests
-python-dotenv
-ollama
-tiktoken
-fireworks-ai
+requests>=2.32.0,<3
+numpy>=1.26.0,<3
+sentence-transformers>=3.0.0,<4
+llama-cpp-python>=0.2.90,<0.4
+huggingface-hub[hf_xet]>=0.24.0,<1

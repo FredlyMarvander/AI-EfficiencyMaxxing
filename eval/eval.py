@@ -1,58 +1,48 @@
-"""
-Local eval harness.
+"""Small local smoke harness for the file-based runner."""
 
-Runs every task in test_cases.json through the agent and prints a
-per-task breakdown plus totals (accuracy + tokens). This mirrors how
-the competition scores you: token count + output accuracy.
-
-Run:  python -m eval.eval
-"""
 import json
 import os
 
-from agent.router import run_agent
+from agent.config import load_settings
+from agent.fireworks import FireworksClient
+from main import answer_task
 
 
 def looks_correct(output: str, expected: str) -> bool:
-    """
-    Very simple accuracy check. For open-ended tasks (expected == ""),
-    we just check the answer is non-trivial. Swap this for the real
-    grading method once it's known on launch day.
-    """
     if not expected:
         return len((output or "").strip()) > 20
     return expected.strip().lower() in (output or "").strip().lower()
 
 
 def main():
+    settings = load_settings()
+    client = FireworksClient(settings)
     here = os.path.dirname(__file__)
-    with open(os.path.join(here, "test_cases.json")) as f:
-        cases = json.load(f)
+    with open(os.path.join(here, "test_cases.json"), encoding="utf-8") as handle:
+        cases = json.load(handle)
 
-    total_tokens = 0
     passed = 0
 
-    print(f"{'id':>3}  {'model':<7} {'tokens':>7}  {'ok':>3}  reason")
-    print("-" * 52)
+    print(f"{'id':>12}  {'ok':>3}  answer")
+    print("-" * 72)
 
     for case in cases:
-        result = run_agent(case["task"])
-        ok = looks_correct(result["output"], case.get("expected", ""))
-
-        total_tokens += result["total_tokens"]
+        task = {
+            "task_id": str(case.get("task_id", case.get("id", ""))),
+            "prompt": str(case.get("prompt", case.get("task", ""))),
+        }
+        result = answer_task(task, client, settings)
+        ok = looks_correct(result["answer"], case.get("expected", ""))
         passed += int(ok)
 
         print(
-            f"{case['id']:>3}  "
-            f"{result['model_used']:<7} "
-            f"{result['total_tokens']:>7}  "
+            f"{task['task_id']:>12}  "
             f"{'OK' if ok else 'X':>3}  "
-            f"{result['route_reason']}"
+            f"{result['answer'][:80]}"
         )
 
-    print("-" * 52)
+    print("-" * 72)
     print(f"Accuracy:     {passed}/{len(cases)}")
-    print(f"Total tokens: {total_tokens}")
 
 
 if __name__ == "__main__":

@@ -1,22 +1,7 @@
-"""FastAPI entry point. Run: uvicorn api.main:app --reload"""
-from fastapi import FastAPI
-from pydantic import BaseModel
+"""Legacy module kept so `python -m api.main` runs the batch agent."""
 
-from agent.router import run_agent
-
-app = FastAPI(title="Hybrid Token-Efficient Routing Agent")
+from main import main
 
 
-class TaskRequest(BaseModel):
-    task: str
-
-
-@app.get("/")
-def health():
-    return {"status": "ok"}
-
-
-@app.post("/run")
-def run(request: TaskRequest):
-    """Send one task, get the answer plus routing + token info back."""
-    return run_agent(request.task)
+if __name__ == "__main__":
+    raise SystemExit(main())

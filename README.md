@@ -1,92 +1,94 @@
-# Hybrid Token-Efficient Routing Agent
+# Track 1 General-Purpose AI Agent
 
-Submission for **AMD Developer Hackathon: ACT II — Track 1**.
+Batch AI agent for the competition harness. On startup it reads
+`/input/tasks.json`, sends each prompt to Fireworks AI through the injected
+base URL, and writes `/output/results.json` before exiting.
 
-An AI agent that completes each task using the fewest tokens possible by
-deciding, in real time, whether to answer with a small **local model**
-(via Ollama) or escalate to a **remote model** (via the Fireworks AI API).
+## Runtime Contract
 
-## How it routes
+Required environment variables:
 
-```
-task in
-  │
-  ├─ Layer 1: rule-based  → 0 tokens. Obvious-simple → local, obvious-hard → remote.
-  │
-  └─ Layer 2: try local, then check the answer's quality.
-             good enough  → keep the local answer
-             looks weak   → escalate to remote
-```
+- `FIREWORKS_API_KEY`: API key injected by the harness.
+- `FIREWORKS_BASE_URL`: Fireworks/OpenAI-compatible base URL injected by the harness.
+- `ALLOWED_MODELS`: comma-separated model IDs. The code uses the first model in this list.
 
-Token counts come straight from each provider's response, and both the
-local and remote tokens are tallied (so the score is honest even when a
-task gets escalated).
+Input:
 
-## Project layout
-
-```
-amd-routing-agent/
-├── agent/
-│   ├── config.py        ← EDIT THIS ON LAUNCH DAY (model names + knobs)
-│   ├── router.py        ← routing logic (the brain)
-│   ├── local_model.py   ← Ollama local model
-│   ├── fireworks.py     ← Fireworks AI remote model
-│   └── tokens.py        ← token estimate fallback
-├── api/main.py          ← FastAPI endpoint
-├── eval/
-│   ├── eval.py          ← local accuracy + token harness
-│   └── test_cases.json  ← sample tasks
-├── Dockerfile
-├── docker-compose.yml
-└── requirements.txt
+```json
+[{"task_id":"task-1","prompt":"Classify the sentiment: I loved it."}]
 ```
 
-## Run locally (development)
+Output:
 
-1. Install [Ollama](https://ollama.com) and pull a small model:
-   ```bash
-   ollama pull phi3:mini
-   ```
-2. Set up Python:
-   ```bash
-   pip install -r requirements.txt
-   cp .env.example .env      # then paste your Fireworks key into .env
-   ```
-3. Start the API:
-   ```bash
-   uvicorn api.main:app --reload
-   ```
-4. Test it:
-   ```bash
-   curl -X POST http://localhost:8000/run \
-     -H "Content-Type: application/json" \
-     -d '{"task": "Translate good morning to Spanish"}'
-   ```
+```json
+[{"task_id":"task-1","answer":"Positive."}]
+```
 
-## Run the eval
+## Token-Efficient Behavior
+
+- Uses a concise English-only system prompt.
+- Avoids greetings, preambles, and closings.
+- Applies lightweight task classification for factual QA, math, sentiment,
+  summarization, NER, debugging, logic, and code generation.
+- Sets smaller `max_tokens` budgets for short-answer tasks and larger budgets
+  for code/debugging tasks.
+- Uses `temperature=0` for deterministic, direct answers.
+- Uses a 30-second per-request timeout and a 10-minute overall runtime cap.
+
+## Project Layout
+
+```text
+.
+|-- main.py              # batch entry point
+|-- agent/
+|   |-- config.py        # runtime env parsing and validation
+|   |-- fireworks.py     # requests-based Fireworks chat client
+|   |-- io.py            # /input and /output JSON helpers
+|   |-- prompts.py       # compact system prompt
+|   `-- router.py        # task type, model ordering, token budgets
+|-- Dockerfile
+|-- docker-compose.yml
+`-- requirements.txt
+```
+
+## Build and Run
+
+Build for linux/amd64:
 
 ```bash
-python -m eval.eval
+docker buildx build --platform linux/amd64 -t track1-agent .
 ```
 
-Prints, per task: which model was used, tokens spent, pass/fail, and the
-routing reason — plus totals.
-
-## Run with Docker (containerized submission)
+Run locally with mounted input/output folders:
 
 ```bash
-docker-compose up --build
-# one-time: pull the local model into the ollama container
-docker-compose exec ollama ollama pull phi3:mini
+docker run --rm --platform linux/amd64 \
+  -e FIREWORKS_API_KEY="$FIREWORKS_API_KEY" \
+  -e FIREWORKS_BASE_URL="$FIREWORKS_BASE_URL" \
+  -e ALLOWED_MODELS="$ALLOWED_MODELS" \
+  -v "$PWD/input:/input:ro" \
+  -v "$PWD/output:/output" \
+  track1-agent
 ```
 
-The agent is then on `http://localhost:8000`. The pulled model is kept in
-a named volume, so you only pull it once.
+The container exits with code `0` after successfully writing valid JSON results.
 
-## Launch-day checklist (July 6)
+## Run With Docker Compose
 
-- [ ] Put the announced **remote** model name in `agent/config.py` (`REMOTE_MODEL`).
-- [ ] Put the announced **local** model name in `agent/config.py` (`LOCAL_MODEL`) and `ollama pull` it.
-- [ ] Replace `eval/test_cases.json` with (a sample of) the real tasks.
-- [ ] Tune the keyword lists and `quality_score()` in `agent/router.py`.
-- [ ] Re-run `python -m eval.eval` and watch the token total drop.
+Set only your API key, then run compose. The local compose file already supplies
+the Fireworks base URL and uses `minimax-m3` as the single default allowed model
+for token-efficient local testing.
+
+```powershell
+$env:FIREWORKS_API_KEY="your_api_key"
+docker compose up --build
+```
+
+Check token usage from the container logs:
+
+```cmd
+docker compose logs agent | findstr tokens
+```
+
+Each successful task logs `prompt`, `completion`, and `total` tokens. The final
+`tokens total` line is the number to compare between model/prompt settings.
