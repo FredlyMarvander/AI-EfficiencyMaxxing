@@ -124,12 +124,20 @@ SEED_PROMPTS: dict[TaskKind, tuple[str, ...]] = {
 }
 
 
+# The hashing fallback scores plain token overlap, which runs well below
+# MiniLM cosine similarity; the configured thresholds assume MiniLM, so they
+# are scaled down under fallback or nearly every non-lexical prompt would
+# needlessly escalate to Fireworks.
+FALLBACK_THRESHOLD_SCALE = 0.5
+
+
 class SemanticRouter:
     """Classify prompts by cosine similarity against offline seed prompts."""
 
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
         self.encoder = _build_encoder(settings.embedding_model_path)
+        self.encoder_is_fallback = isinstance(self.encoder, _HashingEncoder)
         self.seed_kinds: list[TaskKind] = []
         seed_texts: list[str] = []
         for kind, prompts in SEED_PROMPTS.items():
@@ -157,7 +165,7 @@ class SemanticRouter:
         similarities = self.seed_vectors @ query
         scores: dict[TaskKind, float] = {kind: -1.0 for kind in TaskKind}
 
-        for kind, score in zip(self.seed_kinds, similarities, strict=False):
+        for kind, score in zip(self.seed_kinds, similarities, strict=True):
             scores[kind] = max(scores[kind], float(score))
 
         ranked = sorted(scores.items(), key=lambda item: item[1], reverse=True)
@@ -182,9 +190,14 @@ class SemanticRouter:
         if not self.settings.enable_local_model:
             return RouteTarget.FIREWORKS
 
+        confidence_floor = self.settings.router_confidence_threshold
+        margin_floor = self.settings.router_margin_threshold
+        if self.encoder_is_fallback:
+            confidence_floor *= FALLBACK_THRESHOLD_SCALE
+            margin_floor *= FALLBACK_THRESHOLD_SCALE
+
         if lexical_kind is None and (
-            confidence < self.settings.router_confidence_threshold
-            or margin < self.settings.router_margin_threshold
+            confidence < confidence_floor or margin < margin_floor
         ):
             return RouteTarget.FIREWORKS
 
@@ -239,10 +252,13 @@ def classify_prompt(prompt: str, settings: Settings | None = None) -> TaskKind:
 
 
 def output_budget(kind: TaskKind, prompt: str, default_max_tokens: int) -> int:
+    # Unused max_tokens costs nothing (billing follows generated tokens), so
+    # budgets only guard against truncation; err generous where answers can
+    # legitimately run long.
     words = len(prompt.split())
     budgets = {
         TaskKind.SENTIMENT: 24,
-        TaskKind.FACTUAL: 96,
+        TaskKind.FACTUAL: 192 if _wants_explanation(prompt) else 96,
         TaskKind.NER: 192,
         TaskKind.MATH: 224,
         TaskKind.LOGIC: 224,
@@ -251,6 +267,15 @@ def output_budget(kind: TaskKind, prompt: str, default_max_tokens: int) -> int:
         TaskKind.CODE: 768,
     }
     return max(16, min(default_max_tokens, budgets[kind]))
+
+
+def _wants_explanation(prompt: str) -> bool:
+    return bool(
+        re.search(
+            r"\b(?:explain|describe|why|compare|discuss|elaborate)\b",
+            prompt.lower(),
+        )
+    )
 
 
 def ordered_models(

@@ -79,16 +79,22 @@ Build for linux/amd64 (downloads both models into the image):
 docker buildx build --platform linux/amd64 -t track1-agent .
 ```
 
-Run exactly like the harness does:
+Run exactly like the harness does. Copy `.env.example` to `.env` first and
+fill in your key; `.env` is gitignored and never baked into the image.
+
+macOS/Linux:
 
 ```bash
-docker run --rm --platform linux/amd64 \
-  -e FIREWORKS_API_KEY="$FIREWORKS_API_KEY" \
-  -e FIREWORKS_BASE_URL="$FIREWORKS_BASE_URL" \
-  -e ALLOWED_MODELS="$ALLOWED_MODELS" \
+docker run --rm --platform linux/amd64 --env-file .env \
   -v "$PWD/input:/input:ro" \
   -v "$PWD/output:/output" \
   track1-agent
+```
+
+Windows (CMD; on PowerShell replace `%CD%` with `${PWD}`):
+
+```cmd
+docker run --rm --platform linux/amd64 --env-file .env -v "%CD%\input:/input:ro" -v "%CD%\output:/output" track1-agent
 ```
 
 The container exits with code `0` after writing valid JSON results. Check
@@ -103,12 +109,20 @@ usage; the final `tokens total` line is the score-relevant number.
 
 ## Evaluate Before Submitting
 
-The eval directory is intentionally not baked into the image; mount it:
+The eval directory is intentionally not baked into the image; mount it.
+
+macOS/Linux:
 
 ```bash
 docker run --rm --platform linux/amd64 --env-file .env \
   -v "$PWD/eval:/app/eval" --entrypoint python \
   track1-agent -m eval.eval
+```
+
+Windows (CMD; on PowerShell replace `%CD%` with `${PWD}`):
+
+```cmd
+docker run --rm --platform linux/amd64 --env-file .env -v "%CD%\eval:/app/eval" --entrypoint python track1-agent -m eval.eval
 ```
 
 It prints per-category accuracy, routing precision, local share, Fireworks
