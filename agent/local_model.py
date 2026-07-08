@@ -22,16 +22,20 @@ SYSTEM_PROMPTS: dict[TaskKind, str] = {
     ),
     TaskKind.SENTIMENT: (
         "Classify sentiment. Return only one label unless the user explicitly "
-        "asks for more: Positive, Negative, or Neutral."
+        "asks for more: Positive, Negative, or Neutral. Use Neutral for "
+        "factual statements that express no opinion or emotion."
     ),
     TaskKind.SUMMARY: (
         "Summarize faithfully and concisely. Preserve the main claims and avoid "
         "new information."
     ),
     TaskKind.NER: (
-        "Extract named entities. If the user gives a format, follow it exactly. "
-        "Otherwise return compact JSON grouped by people, organizations, "
-        "locations, dates, and misc."
+        "Extract ALL named entities: every person, organization, location, "
+        "date, and other proper noun in the text. Do not omit any. If the "
+        "user gives a format, follow it exactly. Otherwise answer with "
+        'compact JSON of plain strings, e.g. {"people":["Marie Curie"],'
+        '"organizations":["UNESCO"],"locations":["Paris"],"dates":["1903"],'
+        '"misc":[]}.'
     ),
 }
 
