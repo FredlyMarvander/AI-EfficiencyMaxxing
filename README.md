@@ -1,65 +1,85 @@
-# Track 1 General-Purpose AI Agent
+# Track 1: Hybrid Token-Efficient Routing Agent
 
 Batch AI agent for the competition harness. On startup it reads
-`/input/tasks.json`, sends each prompt to Fireworks AI through the injected
-base URL, and writes `/output/results.json` before exiting.
+`/input/tasks.json`, routes every prompt to the cheapest capable engine
+(a bundled local SLM at zero token cost, or Fireworks AI for hard reasoning),
+and writes `/output/results.json` before exiting.
+
+## How It Works
+
+1. **Two-stage router** (`agent/router.py`): a word-boundary lexical layer
+   catches explicit signals ("summarize", "traceback", "solve"), and a
+   semantic layer embeds the prompt with `all-MiniLM-L6-v2` and scores cosine
+   similarity against offline seed prompts for the eight task categories.
+2. **Easy categories** (factual QA, sentiment, summarisation, NER) run on a
+   quantized Qwen2.5-1.5B GGUF bundled in the image via llama.cpp: zero
+   Fireworks tokens.
+3. **Hard categories** (math, logic, code debugging, code generation) go to
+   Fireworks AI with per-category token budgets and a model-preference order
+   built from `ALLOWED_MODELS` at runtime.
+4. **Reliability**: Fireworks calls run concurrently while local inference
+   gets a serial lane; `results.json` is written atomically after every task;
+   an internal 540-second deadline guarantees completion before the harness's
+   10-minute limit; truncated answers are retried with a larger budget and
+   reasoning-model think-blocks are stripped; local failures fall back to
+   Fireworks, and failed remote models fall back to the next allowed model.
 
 ## Runtime Contract
 
-Required environment variables:
+Required environment variables (injected by the harness, never hardcoded):
 
-- `FIREWORKS_API_KEY`: API key injected by the harness.
-- `FIREWORKS_BASE_URL`: Fireworks/OpenAI-compatible base URL injected by the harness.
-- `ALLOWED_MODELS`: comma-separated model IDs. The code uses the first model in this list.
+- `FIREWORKS_API_KEY`: API key.
+- `FIREWORKS_BASE_URL`: base URL used for every Fireworks call.
+- `ALLOWED_MODELS`: comma-separated model IDs; calls are validated against
+  this list before any request is sent.
 
-Input:
+Input (`/input/tasks.json`):
 
 ```json
 [{"task_id":"task-1","prompt":"Classify the sentiment: I loved it."}]
 ```
 
-Output:
+Output (`/output/results.json`):
 
 ```json
 [{"task_id":"task-1","answer":"Positive."}]
 ```
 
-## Token-Efficient Behavior
-
-- Uses a concise English-only system prompt.
-- Avoids greetings, preambles, and closings.
-- Applies lightweight task classification for factual QA, math, sentiment,
-  summarization, NER, debugging, logic, and code generation.
-- Sets smaller `max_tokens` budgets for short-answer tasks and larger budgets
-  for code/debugging tasks.
-- Uses `temperature=0` for deterministic, direct answers.
-- Uses a 30-second per-request timeout and a 10-minute overall runtime cap.
+Optional tuning variables (see `agent/config.py` for the full list):
+`FIREWORKS_CONCURRENCY` (default 4), `MAX_RUNTIME_SECONDS` (default 540),
+`MAX_TOKENS` (default 1024), `ENABLE_LOCAL_MODEL`, `PREFERRED_FIREWORKS_MODEL`,
+`ROUTER_CONFIDENCE_THRESHOLD`, `ROUTER_MARGIN_THRESHOLD`.
 
 ## Project Layout
 
 ```text
 .
-|-- main.py              # batch entry point
+|-- main.py              # batch entry point: parallel lanes, deadline, atomic writes
 |-- agent/
 |   |-- config.py        # runtime env parsing and validation
-|   |-- fireworks.py     # requests-based Fireworks chat client
-|   |-- io.py            # /input and /output JSON helpers
-|   |-- prompts.py       # compact system prompt
-|   `-- router.py        # task type, model ordering, token budgets
-|-- Dockerfile
+|   |-- fireworks.py     # Fireworks chat client: usage tracking, truncation retry
+|   |-- io.py            # /input and /output JSON helpers (atomic writes)
+|   |-- local_model.py   # llama.cpp GGUF wrapper with per-category prompts
+|   |-- prompts.py       # compact shared system prompt
+|   |-- router.py        # lexical + semantic task routing, budgets, model order
+|   `-- tokens.py        # cheap token estimation for context-window guards
+|-- eval/
+|   |-- eval.py          # local eval harness: accuracy, routing, token report
+|   `-- test_cases.json  # 43 cases across all eight categories
+|-- Dockerfile           # linux/amd64; bundles MiniLM + Qwen2.5-1.5B GGUF
 |-- docker-compose.yml
 `-- requirements.txt
 ```
 
 ## Build and Run
 
-Build for linux/amd64:
+Build for linux/amd64 (downloads both models into the image):
 
 ```bash
 docker buildx build --platform linux/amd64 -t track1-agent .
 ```
 
-Run locally with mounted input/output folders:
+Run exactly like the harness does:
 
 ```bash
 docker run --rm --platform linux/amd64 \
@@ -71,24 +91,27 @@ docker run --rm --platform linux/amd64 \
   track1-agent
 ```
 
-The container exits with code `0` after successfully writing valid JSON results.
+The container exits with code `0` after writing valid JSON results. Check
+token usage in the logs:
 
-## Run With Docker Compose
-
-Set only your API key, then run compose. The local compose file already supplies
-the Fireworks base URL and uses `minimax-m3` as the single default allowed model
-for token-efficient local testing.
-
-```powershell
-$env:FIREWORKS_API_KEY="your_api_key"
-docker compose up --build
+```bash
+docker compose logs agent | grep tokens
 ```
 
-Check token usage from the container logs:
+Each task logs its route (`route task=... target=local|fireworks`) and token
+usage; the final `tokens total` line is the score-relevant number.
 
-```cmd
-docker compose logs agent | findstr tokens
+## Evaluate Before Submitting
+
+The eval directory is intentionally not baked into the image; mount it:
+
+```bash
+docker run --rm --platform linux/amd64 --env-file .env \
+  -v "$PWD/eval:/app/eval" --entrypoint python \
+  track1-agent -m eval.eval
 ```
 
-Each successful task logs `prompt`, `completion`, and `total` tokens. The final
-`tokens total` line is the number to compare between model/prompt settings.
+It prints per-category accuracy, routing precision, local share, Fireworks
+tokens, and wall time for 43 cases across all eight competition categories.
+Use it to decide which categories belong in `LOCAL_TASKS` vs
+`FIREWORKS_TASKS` (`agent/router.py`) before submitting.
