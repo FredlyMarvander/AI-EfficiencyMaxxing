@@ -8,6 +8,7 @@ from typing import Any
 
 from agent.config import Settings
 from agent.router import TaskKind
+from agent.tokens import estimate_tokens
 
 
 class LocalModelError(RuntimeError):
@@ -45,6 +46,11 @@ class LocalGGUFModel:
     _llm: Any = field(default=None, init=False, repr=False)
 
     def complete(self, prompt: str, kind: TaskKind, max_tokens: int) -> str:
+        # Fail fast (and fall back to Fireworks) instead of letting llama.cpp
+        # error out after a slow prefill; 128 covers template + system prompt.
+        if estimate_tokens(prompt) + max_tokens + 128 > self.settings.local_n_ctx:
+            raise LocalModelError("prompt likely exceeds the local context window")
+
         llm = self._load()
         system_prompt = SYSTEM_PROMPTS.get(kind, DEFAULT_SYSTEM_PROMPT)
 

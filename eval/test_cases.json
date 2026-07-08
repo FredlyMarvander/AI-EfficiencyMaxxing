@@ -1,8 +1,52 @@
 [
-  {"id": 1, "task": "Translate 'good morning' to Spanish", "expected": "buenos d\u00edas", "level": "easy"},
-  {"id": 2, "task": "What is the capital of Japan?", "expected": "Tokyo", "level": "easy"},
-  {"id": 3, "task": "How many continents are there?", "expected": "7", "level": "easy"},
-  {"id": 4, "task": "Convert 100 Fahrenheit to Celsius (give the number)", "expected": "37", "level": "easy"},
-  {"id": 5, "task": "Analyze the main causes of inflation and explain how central banks typically respond.", "expected": "", "level": "hard"},
-  {"id": 6, "task": "Compare REST and GraphQL APIs and explain when to use each.", "expected": "", "level": "hard"}
+  {"id": "fact-1", "category": "factual", "prompt": "What is the capital of Japan?", "expected": "tokyo"},
+  {"id": "fact-2", "category": "factual", "prompt": "Who wrote the play Romeo and Juliet?", "expected": "shakespeare"},
+  {"id": "fact-3", "category": "factual", "prompt": "What is the largest ocean on Earth?", "expected": "pacific"},
+  {"id": "fact-4", "category": "factual", "prompt": "When did the Berlin Wall fall?", "expected": "1989"},
+  {"id": "fact-5", "category": "factual", "prompt": "Which planet in our solar system is the largest?", "expected": "jupiter"},
+  {"id": "fact-6", "category": "factual", "prompt": "What is the official language of Brazil?", "expected": "portuguese"},
+
+  {"id": "math-1", "category": "math", "prompt": "Calculate 17 multiplied by 23.", "expected": "391"},
+  {"id": "math-2", "category": "math", "prompt": "What is 15 percent of 240?", "expected": "36"},
+  {"id": "math-3", "category": "math", "prompt": "Solve the equation 2x + 5 = 19 for x.", "expected": "7"},
+  {"id": "math-4", "category": "math", "prompt": "Calculate the average of these numbers: 4, 8, 15, 16, 23, 42.", "expected": "18"},
+  {"id": "math-5", "category": "math", "prompt": "Calculate the speed in kilometers per hour of a train that travels 180 kilometers in 2.5 hours.", "expected": "72"},
+  {"id": "math-6", "category": "math", "prompt": "A shirt costs 40 dollars and is discounted by 25 percent. Calculate the final price in dollars.", "expected": "30"},
+
+  {"id": "sent-1", "category": "sentiment", "prompt": "Classify the sentiment of this review as positive, negative, or neutral: 'Absolutely wonderful film, I was moved to tears and smiled the whole way home.'", "expected": "positive"},
+  {"id": "sent-2", "category": "sentiment", "prompt": "Classify the sentiment of this review as positive, negative, or neutral: 'The charger broke after two days and customer support never replied. Complete waste of money.'", "expected": "negative"},
+  {"id": "sent-3", "category": "sentiment", "prompt": "Classify the sentiment of this review as positive, negative, or neutral: 'The package arrived on Tuesday and contained the items I ordered.'", "expected": "neutral"},
+  {"id": "sent-4", "category": "sentiment", "prompt": "Classify the sentiment of this review as positive, negative, or neutral: 'The screen is gorgeous, but the battery died constantly and I ended up returning it.'", "expected": "negative"},
+  {"id": "sent-5", "category": "sentiment", "prompt": "Classify the sentiment of this review as positive, negative, or neutral: 'Best purchase I have made all year, worth every penny!'", "expected": "positive"},
+  {"id": "sent-6", "category": "sentiment", "prompt": "Classify the sentiment of this review as positive, negative, or neutral: 'It works, I guess. Nothing special either way.'", "expected": "neutral"},
+
+  {"id": "summ-1", "category": "summarisation", "prompt": "Summarize the following passage in one or two sentences: Honeybee populations across North America and Europe have declined sharply over the past two decades. Scientists attribute the losses to a combination of pesticide exposure, parasitic mites, habitat loss, and climate stress. Because bees pollinate roughly one third of the crops humans eat, researchers warn that continued declines could threaten global food supplies and raise prices for fruits, nuts, and vegetables. Several countries have responded by restricting certain pesticides and funding habitat restoration programs.", "expected_any": ["bee", "pollinat"]},
+  {"id": "summ-2", "category": "summarisation", "prompt": "Summarize the following passage in one or two sentences: The city council approved a new bike-sharing program on Monday that will place two thousand bicycles at one hundred and fifty docking stations across the downtown core. Riders will pay a small fee through a mobile app, with discounts for students and seniors. Officials hope the program will reduce short car trips, ease parking congestion, and cut emissions. Local businesses have welcomed the plan, although some residents worry the docking stations will take away street parking spaces.", "expected_any": ["bike", "bicycle", "cycling"]},
+  {"id": "summ-3", "category": "summarisation", "prompt": "Summarize the following passage in one or two sentences: A large ten-year study published this week found that people who drank two to three cups of coffee per day had a modestly lower risk of heart disease than those who drank none. The researchers emphasized that the study was observational and cannot prove cause and effect, since coffee drinkers may share other healthy habits. They also cautioned that adding large amounts of sugar or cream could offset any potential benefit, and that people sensitive to caffeine should not increase their intake.", "expected_any": ["coffee"]},
+  {"id": "summ-4", "category": "summarisation", "prompt": "Summarize the following passage in one or two sentences: The volcanic eruption in Iceland sent a plume of ash more than ten kilometers into the atmosphere on Thursday, forcing airlines to cancel hundreds of flights across northern Europe. Aviation authorities said the fine ash poses a serious risk to jet engines and visibility. Meteorologists expect shifting winds to push the cloud south over the weekend, which could disrupt travel further. Residents near the volcano were evacuated as a precaution, though officials reported no injuries so far.", "expected_any": ["volcan", "eruption", "ash", "flight"]},
+  {"id": "summ-5", "category": "summarisation", "prompt": "Summarize the following passage in one or two sentences: The company reported quarterly revenue of 4.2 billion dollars, up eight percent from a year earlier, driven mainly by strong demand for its cloud services division. Profit, however, fell three percent because of heavy spending on new data centers and a one-time restructuring charge. Executives told investors they expect margins to recover next year as the investments begin to pay off, and they reaffirmed their full-year revenue forecast despite a weaker advertising market.", "expected_any": ["revenue", "profit", "earnings", "cloud"]},
+
+  {"id": "ner-1", "category": "named_entity_recognition", "prompt": "Extract the named entities from this sentence: Barack Obama visited Paris in 2015 to meet officials from UNESCO.", "expected_all": ["obama", "paris", "unesco"]},
+  {"id": "ner-2", "category": "named_entity_recognition", "prompt": "Extract the named entities from this sentence: Tim Cook announced that Apple will build a new campus in Austin, Texas.", "expected_all": ["cook", "apple", "austin"]},
+  {"id": "ner-3", "category": "named_entity_recognition", "prompt": "Extract the named entities from this sentence: The World Health Organization declared an emergency after the outbreak in Guinea in March 2014.", "expected_all": ["world health organization", "guinea", "2014"]},
+  {"id": "ner-4", "category": "named_entity_recognition", "prompt": "Extract the named entities from this sentence: Elon Musk said SpaceX will launch Starship from Boca Chica on Thursday.", "expected_all": ["musk", "spacex", "boca chica"]},
+  {"id": "ner-5", "category": "named_entity_recognition", "prompt": "Extract the named entities from this sentence: Serena Williams won her seventh Wimbledon title in London last July.", "expected_all": ["serena williams", "wimbledon", "london"]},
+
+  {"id": "debug-1", "category": "code_debugging", "prompt": "Find the bug and fix this Python function that should return True for even numbers:\n\ndef is_even(n):\n    return n % 2 == 1", "expected_any": ["% 2 == 0"]},
+  {"id": "debug-2", "category": "code_debugging", "prompt": "This Python function has a bug: the same list is shared between calls. Fix it:\n\ndef append_item(item, items=[]):\n    items.append(item)\n    return items", "expected_any": ["items=none", "items = none", "is none"]},
+  {"id": "debug-3", "category": "code_debugging", "prompt": "Fix the bug in this JavaScript loop that reads past the end of the array:\n\nfor (var i = 0; i <= arr.length; i++) {\n  console.log(arr[i]);\n}", "expected_any": ["i < arr.length"]},
+  {"id": "debug-4", "category": "code_debugging", "prompt": "Why does this Python code raise an exception when numbers is an empty list, and how would you fix it?\n\ndef mean(numbers):\n    return sum(numbers) / len(numbers)", "expected_any": ["zerodivision", "division by zero", "divide by zero", "empty"]},
+  {"id": "debug-5", "category": "code_debugging", "prompt": "Debug this Python loop that never terminates and fix it:\n\nx = 10\nwhile x > 0:\n    print(x)", "expected_any": ["x -= 1", "x = x - 1", "decrement"]},
+
+  {"id": "logic-1", "category": "logical_reasoning", "prompt": "All cats are mammals. All mammals are animals. Does it logically follow that all cats are animals? Answer yes or no.", "expected": "yes"},
+  {"id": "logic-2", "category": "logical_reasoning", "prompt": "On an island, knights always tell the truth and knaves always lie. Someone says: 'I am a knave.' Can this speaker be either a knight or a knave? Answer yes or no, then explain briefly.", "expected_any": ["no", "neither", "paradox", "impossible"]},
+  {"id": "logic-3", "category": "logical_reasoning", "prompt": "If it rains, the ground gets wet. The ground is wet. Does it logically follow that it rained? Answer yes or no.", "expected_any": ["no"]},
+  {"id": "logic-4", "category": "logical_reasoning", "prompt": "Premise 1: Some birds cannot fly. Premise 2: Penguins are birds. Conclusion: Therefore penguins cannot fly. Is this argument logically valid? Answer valid or invalid.", "expected_any": ["invalid", "not valid"]},
+  {"id": "logic-5", "category": "logical_reasoning", "prompt": "Alice is taller than Bob. Bob is taller than Carol. Deduce who is the shortest. Answer with just the name.", "expected": "carol"},
+
+  {"id": "code-1", "category": "code_generation", "prompt": "Write a Python function called is_palindrome(s) that returns True if the string s reads the same forwards and backwards, ignoring case.", "expected": "def is_palindrome"},
+  {"id": "code-2", "category": "code_generation", "prompt": "Write a Python function called fizzbuzz(n) that returns a list of strings for the numbers 1 to n: 'Fizz' for multiples of 3, 'Buzz' for multiples of 5, 'FizzBuzz' for multiples of both, otherwise the number itself as a string.", "expected": "def fizzbuzz"},
+  {"id": "code-3", "category": "code_generation", "prompt": "Write a SQL query that selects the name and email of all rows in a table called users where the age column is greater than 30.", "expected_all": ["select", "users", "30"]},
+  {"id": "code-4", "category": "code_generation", "prompt": "Write a JavaScript function called sumArray(arr) that returns the sum of an array of numbers.", "expected": "sumarray"},
+  {"id": "code-5", "category": "code_generation", "prompt": "Write a recursive Python function called factorial(n) that returns n factorial.", "expected": "def factorial"}
 ]

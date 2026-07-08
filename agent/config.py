@@ -9,10 +9,14 @@ import os
 DEFAULT_INPUT_PATH = "/input/tasks.json"
 DEFAULT_OUTPUT_PATH = "/output/results.json"
 DEFAULT_REQUEST_TIMEOUT_SECONDS = 30.0
-DEFAULT_MAX_TOKENS = 512
-DEFAULT_MAX_RUNTIME_SECONDS = 600.0
+DEFAULT_MAX_TOKENS = 1024
+# The harness kills the container at 600s; stop early so results are written.
+HARD_RUNTIME_LIMIT_SECONDS = 600.0
+DEFAULT_MAX_RUNTIME_SECONDS = 540.0
+DEFAULT_FIREWORKS_CONCURRENCY = 4
 DEFAULT_EMBEDDING_MODEL_PATH = "/models/all-MiniLM-L6-v2"
 DEFAULT_LOCAL_MODEL_PATH = "/models/qwen2.5-1.5b-instruct-q4_k_m.gguf"
+DEFAULT_LOCAL_N_CTX = 8192
 DEFAULT_ROUTER_CONFIDENCE_THRESHOLD = 0.24
 DEFAULT_ROUTER_MARGIN_THRESHOLD = 0.015
 
@@ -34,7 +38,8 @@ class Settings:
     embedding_model_path: str = DEFAULT_EMBEDDING_MODEL_PATH
     local_model_path: str = DEFAULT_LOCAL_MODEL_PATH
     enable_local_model: bool = True
-    local_n_ctx: int = 2048
+    fireworks_concurrency: int = DEFAULT_FIREWORKS_CONCURRENCY
+    local_n_ctx: int = DEFAULT_LOCAL_N_CTX
     local_n_threads: int = 4
     local_n_batch: int = 256
     router_confidence_threshold: float = DEFAULT_ROUTER_CONFIDENCE_THRESHOLD
@@ -89,15 +94,25 @@ def load_settings() -> Settings:
             "MAX_RUNTIME_SECONDS",
             DEFAULT_MAX_RUNTIME_SECONDS,
             minimum=1.0,
-            maximum=DEFAULT_MAX_RUNTIME_SECONDS,
+            maximum=HARD_RUNTIME_LIMIT_SECONDS,
         ),
         embedding_model_path=os.getenv(
             "EMBEDDING_MODEL_PATH", DEFAULT_EMBEDDING_MODEL_PATH
         ),
         local_model_path=os.getenv("LOCAL_GGUF_PATH", DEFAULT_LOCAL_MODEL_PATH),
         enable_local_model=_env_bool("ENABLE_LOCAL_MODEL", True),
-        local_n_ctx=_env_int("LOCAL_N_CTX", 2048, minimum=512, maximum=8192),
-        local_n_threads=_env_int("LOCAL_N_THREADS", 4, minimum=1, maximum=32),
+        fireworks_concurrency=_env_int(
+            "FIREWORKS_CONCURRENCY",
+            DEFAULT_FIREWORKS_CONCURRENCY,
+            minimum=1,
+            maximum=16,
+        ),
+        local_n_ctx=_env_int(
+            "LOCAL_N_CTX", DEFAULT_LOCAL_N_CTX, minimum=512, maximum=32768
+        ),
+        local_n_threads=_env_int(
+            "LOCAL_N_THREADS", os.cpu_count() or 4, minimum=1, maximum=32
+        ),
         local_n_batch=_env_int("LOCAL_N_BATCH", 256, minimum=32, maximum=2048),
         router_confidence_threshold=_env_float(
             "ROUTER_CONFIDENCE_THRESHOLD",

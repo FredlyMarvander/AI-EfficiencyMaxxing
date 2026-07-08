@@ -292,84 +292,123 @@ def _select_model(allowed_models: list[str], kind: TaskKind) -> str:
         TaskKind.NER: ("mini", "small", "gemma", "llama", "qwen"),
         TaskKind.SUMMARY: ("mini", "small", "gemma", "llama", "qwen"),
     }
+    # Needles are in priority order, so scan needle-first: otherwise the first
+    # allowed model matching any needle wins and the preference order is moot.
     needles = preferences.get(kind, ())
-    for model in allowed_models:
-        lowered = model.lower()
-        if any(needle in lowered for needle in needles):
-            return model
+    for needle in needles:
+        for model in allowed_models:
+            if needle in model.lower():
+                return model
     return allowed_models[0]
+
+
+# All lexical markers are word-bounded regexes: plain substring checks misfire
+# badly ("ner" in "energy", "exception" in "exceptional") and a lexical match
+# overrides the semantic router, so a false positive cannot be recovered.
+_DEBUGGING_PATTERNS = (
+    r"\btraceback\b",
+    r"\bstack trace\b",
+    r"\bdebug\w*\b",
+    r"\bbugs?\b",
+    r"\bfix (?:this|the|my) code\b",
+    r"\bfailing tests?\b",
+    r"\bexceptions?\b",
+    r"\bcompiler error\b",
+)
+
+_CODE_PATTERNS = (
+    r"\bwrite (?:a|an|the|some)? ?(?:\w+ )?function\b",
+    r"\bwrite (?:a |the )?code\b",
+    r"\bgenerate (?:a |the )?code\b",
+    r"\bimplement (?:a|an|the) (?:\w+ )?(?:function|class|method)\b",
+    r"\bcreate (?:a|an|the) script\b",
+    r"\b(?:python|javascript|java|c\+\+) function\b",
+    r"\bsql quer(?:y|ies)\b",
+    r"\bcomplete the code\b",
+)
+
+_SUMMARY_PATTERNS = (
+    r"\bsummar\w*\b",
+    r"\btl;?dr\b",
+    r"\bcondens\w*\b",
+    r"\babstract of\b",
+    r"\bmain points\b",
+)
+
+_NER_PATTERNS = (
+    r"\bnamed entit(?:y|ies)\b",
+    r"\bentit(?:y|ies)\b",
+    r"\bpeople, organizations\b",
+    r"\bpersons, places\b",
+    r"\bner\b",
+)
+
+_SENTIMENT_PATTERNS = (
+    r"\bsentiments?\b",
+    r"\bpositive, negative\b",
+    r"\bnegative, positive\b",
+    r"\bpositive or negative\b",
+    r"\bnegative or positive\b",
+    r"\bclassify the review\b",
+    r"\bcustomer feedback\b",
+)
+
+_MATH_PATTERNS = (
+    r"\bsolv(?:e|ed|ing)\b",
+    r"\bcalculat(?:e|ed|ing|ions?)\b",
+    r"\bequations?\b",
+    r"\bprobabilit(?:y|ies)\b",
+    r"\bpercent(?:age)?s?\b",
+    r"\bratios?\b",
+    r"\baverage\b",
+    r"\barithmetic\b",
+    r"\bhow many\b",
+    r"\bhow much\b",
+)
+
+_LOGIC_PATTERNS = (
+    r"\blogic(?:al(?:ly)?)?\b",
+    r"\bpremises?\b",
+    r"\btherefore\b",
+    r"\bdeduc(?:e|ed|tion|tive)\b",
+    r"\btruth table\b",
+    r"\bif and only if\b",
+    r"\bknights and knaves\b",
+    r"\bknaves?\b",
+    r"\bis the argument valid\b",
+)
+
+
+def _matches_any(text: str, patterns: tuple[str, ...]) -> bool:
+    return any(re.search(pattern, text) for pattern in patterns)
 
 
 def _lexical_kind(prompt: str) -> TaskKind | None:
     text = prompt.lower()
 
-    if any(
-        marker in text
-        for marker in (
-            "traceback",
-            "stack trace",
-            "debug",
-            "bug",
-            "fix this code",
-            "failing test",
-            "exception",
-            "compiler error",
-        )
-    ):
+    # Order matters. Misrouting into a Fireworks category is recoverable (the
+    # remote system prompt is generic), but misrouting into a local category
+    # applies a task-specific system prompt, so instruction verbs like
+    # "summarize" must win over topic words like "customer feedback".
+    if _matches_any(text, _DEBUGGING_PATTERNS):
         return TaskKind.DEBUGGING
 
     if _asks_for_code(text):
         return TaskKind.CODE
 
-    if any(
-        marker in text
-        for marker in (
-            "sentiment",
-            "positive, negative",
-            "negative, positive",
-            "positive or negative",
-            "classify the review",
-            "customer feedback",
-        )
-    ):
-        return TaskKind.SENTIMENT
+    if _matches_any(text, _SUMMARY_PATTERNS):
+        return TaskKind.SUMMARY
 
-    if any(
-        marker in text
-        for marker in (
-            "named entity",
-            "extract entities",
-            "identify entities",
-            "entities from",
-            "people, organizations",
-            "persons, places",
-            "ner",
-        )
-    ):
+    if _matches_any(text, _NER_PATTERNS):
         return TaskKind.NER
 
-    if any(
-        marker in text
-        for marker in ("summarize", "summarise", "summary", "tl;dr", "tldr", "condense")
-    ):
-        return TaskKind.SUMMARY
+    if _matches_any(text, _SENTIMENT_PATTERNS):
+        return TaskKind.SENTIMENT
 
     if _looks_mathematical(text):
         return TaskKind.MATH
 
-    if any(
-        marker in text
-        for marker in (
-            "logical",
-            "premise",
-            "therefore",
-            "deduce",
-            "truth table",
-            "if and only if",
-            "knights and knaves",
-            "is the argument valid",
-        )
-    ):
+    if _matches_any(text, _LOGIC_PATTERNS):
         return TaskKind.LOGIC
 
     if text.lstrip().startswith(
@@ -381,45 +420,16 @@ def _lexical_kind(prompt: str) -> TaskKind | None:
 
 
 def _asks_for_code(text: str) -> bool:
-    if "```" in text and any(
-        marker in text for marker in ("write", "generate", "implement", "create")
+    if "```" in text and re.search(
+        r"\b(?:write|generat\w*|implement\w*|creat\w*)\b", text
     ):
         return True
 
-    return any(
-        marker in text
-        for marker in (
-            "write a function",
-            "write code",
-            "generate code",
-            "implement a function",
-            "implement a class",
-            "create a script",
-            "python function",
-            "javascript function",
-            "sql query",
-            "complete the code",
-        )
-    )
+    return _matches_any(text, _CODE_PATTERNS)
 
 
 def _looks_mathematical(text: str) -> bool:
-    if any(
-        marker in text
-        for marker in (
-            "solve",
-            "calculate",
-            "equation",
-            "probability",
-            "percent",
-            "percentage",
-            "ratio",
-            "average",
-            "arithmetic",
-            "how many",
-            "how much",
-        )
-    ):
+    if _matches_any(text, _MATH_PATTERNS):
         return True
 
     return bool(re.search(r"\d+\s*[-+*/^]\s*\d+", text))

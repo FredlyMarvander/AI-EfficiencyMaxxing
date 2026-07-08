@@ -3,18 +3,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 import re
+import threading
 from typing import Any
 
 import requests
 
 from agent.config import Settings
+from agent.prompts import SYSTEM_PROMPT
 
 
-SYSTEM_PROMPT = (
-    "You are a highly efficient assistant. Think carefully, then provide the "
-    "accurate final answer in English with no conversational filler."
-)
+MAX_RETRY_TOKENS = 2048
 
 
 class FireworksAPIError(RuntimeError):
@@ -29,6 +29,7 @@ class FireworksClient:
         self.chat_url = _chat_completions_url(self.settings.fireworks_base_url)
         self.last_usage: dict[str, int | str] = _empty_usage()
         self.total_usage: dict[str, int] = _empty_total_usage()
+        self._usage_lock = threading.Lock()
         self.session = requests.Session()
         self.session.headers.update(
             {
@@ -45,6 +46,22 @@ class FireworksClient:
         max_tokens: int | None = None,
         timeout_seconds: float | None = None,
     ) -> str:
+        answer, _ = self.complete_with_usage(
+            prompt,
+            model=model,
+            max_tokens=max_tokens,
+            timeout_seconds=timeout_seconds,
+        )
+        return answer
+
+    def complete_with_usage(
+        self,
+        prompt: str,
+        model: str | None = None,
+        max_tokens: int | None = None,
+        timeout_seconds: float | None = None,
+        _retry_on_truncation: bool = True,
+    ) -> tuple[str, dict[str, int | str]]:
         selected_model = model or self.settings.allowed_models[0]
         if selected_model not in self.settings.allowed_models:
             raise FireworksAPIError(
@@ -53,7 +70,6 @@ class FireworksClient:
 
         token_limit = max_tokens or self.settings.default_max_tokens
         timeout = timeout_seconds or self.settings.request_timeout_seconds
-        self.last_usage = _empty_usage()
         payload = {
             "model": selected_model,
             "messages": [
@@ -81,13 +97,46 @@ class FireworksClient:
         except ValueError as exc:
             raise FireworksAPIError("response was not valid JSON") from exc
 
-        self.last_usage = _extract_usage(data, selected_model)
-        self.total_usage["prompt_tokens"] += int(self.last_usage["prompt_tokens"])
-        self.total_usage["completion_tokens"] += int(
-            self.last_usage["completion_tokens"]
-        )
-        self.total_usage["total_tokens"] += int(self.last_usage["total_tokens"])
-        return _clean_answer(_extract_content(data))
+        usage = _extract_usage(data, selected_model)
+        with self._usage_lock:
+            self.last_usage = usage
+            self.total_usage["prompt_tokens"] += int(usage["prompt_tokens"])
+            self.total_usage["completion_tokens"] += int(usage["completion_tokens"])
+            self.total_usage["total_tokens"] += int(usage["total_tokens"])
+
+        content, finish_reason = _extract_content(data)
+        answer = _clean_answer(_strip_reasoning(content))
+
+        # A "length" stop means the answer was cut off mid-generation (for
+        # reasoning models possibly inside a <think> block, leaving nothing
+        # usable). One retry with a bigger budget costs extra tokens but a
+        # truncated answer risks failing the accuracy gate entirely.
+        if finish_reason == "length" and _retry_on_truncation:
+            retry_limit = min(MAX_RETRY_TOKENS, token_limit * 3)
+            if retry_limit > token_limit:
+                logging.info(
+                    "answer truncated at %s tokens; retrying with %s",
+                    token_limit,
+                    retry_limit,
+                )
+                try:
+                    return self.complete_with_usage(
+                        prompt,
+                        model=selected_model,
+                        max_tokens=retry_limit,
+                        timeout_seconds=timeout_seconds,
+                        _retry_on_truncation=False,
+                    )
+                except FireworksAPIError as exc:
+                    if not answer:
+                        raise
+                    logging.warning(
+                        "truncation retry failed (%s); keeping truncated answer", exc
+                    )
+
+        if not answer:
+            raise FireworksAPIError("model returned an empty answer")
+        return answer, usage
 
 
 def call_fireworks_api(
@@ -157,7 +206,7 @@ def _safe_int(value: Any) -> int:
         return 0
 
 
-def _extract_content(data: dict[str, Any]) -> str:
+def _extract_content(data: dict[str, Any]) -> tuple[str, str]:
     choices = data.get("choices")
     if not isinstance(choices, list) or not choices:
         raise FireworksAPIError("response did not include choices")
@@ -178,10 +227,16 @@ def _extract_content(data: dict[str, Any]) -> str:
             for part in content
         )
 
-    answer = str(content or "").strip()
-    if not answer:
-        raise FireworksAPIError("model returned an empty answer")
-    return answer
+    finish_reason = str(first.get("finish_reason") or "")
+    return str(content or "").strip(), finish_reason
+
+
+def _strip_reasoning(text: str) -> str:
+    cleaned = re.sub(r"<think>.*?</think>", "", text, flags=re.S | re.I)
+    # An unterminated <think> means generation was cut off mid-reasoning;
+    # everything after the tag is scratch work, not an answer.
+    cleaned = re.sub(r"<think>.*\Z", "", cleaned, flags=re.S | re.I)
+    return cleaned.strip()
 
 
 def _clean_answer(answer: str) -> str:
