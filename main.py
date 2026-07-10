@@ -169,6 +169,10 @@ def answer_task(
         decision.reason,
     )
 
+    if decision.target is RouteTarget.DETERMINISTIC and decision.answer is not None:
+        # Locally computed exact answer: zero Fireworks tokens, no network.
+        return {"task_id": task_id, "answer": decision.answer}
+
     if decision.target is RouteTarget.LOCAL and settings.enable_local_model:
         model = local_model or LocalGGUFModel(settings)
         try:
@@ -193,6 +197,7 @@ def answer_task(
                 model=model,
                 max_tokens=max_tokens,
                 timeout_seconds=timeout_seconds,
+                kind=decision.kind,
             )
             _log_token_usage(task_id, usage)
             return {"task_id": task_id, "answer": answer}

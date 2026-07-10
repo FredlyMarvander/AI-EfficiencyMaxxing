@@ -10,28 +10,8 @@ from agent.config import load_settings
 from agent.fireworks import FireworksClient
 from agent.local_model import LocalGGUFModel, LocalModelError
 from agent.router import RouteTarget, SemanticRouter
+from eval.grading import looks_correct
 from main import answer_task
-
-
-def looks_correct(case: dict, output: str) -> bool:
-    """Cheap substring heuristic; the real LLM judge is stricter, not looser."""
-
-    text = (output or "").strip().lower()
-    if not text:
-        return False
-
-    expected_all = case.get("expected_all")
-    if expected_all:
-        return all(str(term).strip().lower() in text for term in expected_all)
-
-    expected_any = case.get("expected_any")
-    if expected_any:
-        return any(str(term).strip().lower() in text for term in expected_any)
-
-    expected = str(case.get("expected", "") or "").strip().lower()
-    if expected:
-        return expected in text
-    return len(text) > 20
 
 
 def main() -> None:

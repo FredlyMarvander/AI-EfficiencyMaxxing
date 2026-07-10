@@ -1,0 +1,282 @@
+{
+ "mode": "hybrid",
+ "local_model_available": true,
+ "results": [
+  {
+   "id": "ner-01",
+   "category": "named_entity_recognition",
+   "kind": "named_entity_recognition",
+   "target": "fireworks",
+   "ok": true,
+   "route_ok": true,
+   "tokens": 277,
+   "seconds": 2.16,
+   "answer": "Here are the named entities from the sentence:\n\n- **Angela Merkel** — Person\n- **Emmanuel Macron** — Person\n- **Brussels** — Location\n- **Friday** — Date"
+  },
+  {
+   "id": "ner-02",
+   "category": "named_entity_recognition",
+   "kind": "named_entity_recognition",
+   "target": "fireworks",
+   "ok": true,
+   "route_ok": true,
+   "tokens": 258,
+   "seconds": 6.72,
+   "answer": "Here are the named entities from the sentence:\n\n- **Microsoft** — Organization\n- **GitHub** — Organization\n- **7.5 billion dollars** — Monetary Value\n- **2018** — Date/Year"
+  },
+  {
+   "id": "ner-03",
+   "category": "named_entity_recognition",
+   "kind": "named_entity_recognition",
+   "target": "fireworks",
+   "ok": true,
+   "route_ok": true,
+   "tokens": 246,
+   "seconds": 16.44,
+   "answer": "Here are the named entities from the sentence:\n\n- **Amazon River** — Location\n- **Brazil** — Location\n- **Peru** — Location"
+  },
+  {
+   "id": "ner-04",
+   "category": "named_entity_recognition",
+   "kind": "named_entity_recognition",
+   "target": "fireworks",
+   "ok": true,
+   "route_ok": true,
+   "tokens": 287,
+   "seconds": 9.65,
+   "answer": "**Person:**\n- Lionel Messi\n\n**Organization:**\n- Inter Miami\n- Paris Saint-Germain\n\n**Place:**\n- (none mentioned)"
+  },
+  {
+   "id": "ner-05",
+   "category": "named_entity_recognition",
+   "kind": "named_entity_recognition",
+   "target": "fireworks",
+   "ok": true,
+   "route_ok": true,
+   "tokens": 257,
+   "seconds": 5.12,
+   "answer": "Named entities from the sentence:\n\n- **Toyota** — Organization\n- **Kentucky** — Location\n- **last October** — Date"
+  },
+  {
+   "id": "ner-06",
+   "category": "named_entity_recognition",
+   "kind": "named_entity_recognition",
+   "target": "fireworks",
+   "ok": true,
+   "route_ok": true,
+   "tokens": 326,
+   "seconds": 9.36,
+   "answer": "- **Marie Curie** — Person  \n- **Nobel Prize** — Award  \n- **1903** — Date  \n- **1911** — Date"
+  },
+  {
+   "id": "ner-07",
+   "category": "named_entity_recognition",
+   "kind": "named_entity_recognition",
+   "target": "fireworks",
+   "ok": true,
+   "route_ok": true,
+   "tokens": 274,
+   "seconds": 10.28,
+   "answer": "Here are the named entities from the sentence:\n\n- **United Nations** — Organization\n- **New York** — Location\n- **Kenya** — Location"
+  },
+  {
+   "id": "ner-08",
+   "category": "named_entity_recognition",
+   "kind": "named_entity_recognition",
+   "target": "fireworks",
+   "ok": true,
+   "route_ok": true,
+   "tokens": 374,
+   "seconds": 9.73,
+   "answer": "- **Shakespeare** (Person)\n- **Hamlet** (Work/Title)\n- **London** (Location)"
+  },
+  {
+   "id": "ner-09",
+   "category": "named_entity_recognition",
+   "kind": "named_entity_recognition",
+   "target": "fireworks",
+   "ok": true,
+   "route_ok": true,
+   "tokens": 380,
+   "seconds": 10.65,
+   "answer": "Here are the named entities from the sentence:\n\n- **NASA** — Organization  \n- **James Webb Space Telescope** — Space Telescope (Product/Other proper noun)  \n- **December 25, 2021** — Date"
+  },
+  {
+   "id": "ner-10",
+   "category": "named_entity_recognition",
+   "kind": "named_entity_recognition",
+   "target": "fireworks",
+   "ok": true,
+   "route_ok": true,
+   "tokens": 241,
+   "seconds": 8.62,
+   "answer": "Here are the named entities from the sentence:\n\n- **Cristiano Ronaldo** — Person\n- **Al Nassr** — Organization\n- **Saudi Arabia** — Location"
+  },
+  {
+   "id": "ner-11",
+   "category": "named_entity_recognition",
+   "kind": "named_entity_recognition",
+   "target": "fireworks",
+   "ok": true,
+   "route_ok": true,
+   "tokens": 339,
+   "seconds": 9.92,
+   "answer": "**Named Entities:**\n\n- **Eiffel Tower** — Landmark/Monument\n- **Paris** — Location/City\n- **1889** — Date/Year"
+  },
+  {
+   "id": "ner-12",
+   "category": "named_entity_recognition",
+   "kind": "named_entity_recognition",
+   "target": "fireworks",
+   "ok": true,
+   "route_ok": true,
+   "tokens": 173,
+   "seconds": 10.24,
+   "answer": "**Named Entities:**\n\n- **Sundar Pichai** — Person\n- **Google** — Organization\n- **Zurich** — Location"
+  },
+  {
+   "id": "ner-13",
+   "category": "named_entity_recognition",
+   "kind": "named_entity_recognition",
+   "target": "fireworks",
+   "ok": true,
+   "route_ok": true,
+   "tokens": 290,
+   "seconds": 9.57,
+   "answer": "Here are the named entities from the sentence:\n\n- **Titanic** — Ship/Vehicle\n- **North Atlantic** — Location\n- **April 1912** — Date"
+  },
+  {
+   "id": "ner-14",
+   "category": "named_entity_recognition",
+   "kind": "named_entity_recognition",
+   "target": "fireworks",
+   "ok": true,
+   "route_ok": true,
+   "tokens": 458,
+   "seconds": 11.61,
+   "answer": "Who: Neil Armstrong (person)  \nWhere: the Moon (location)  \nWhen: July 1969 (date)"
+  },
+  {
+   "id": "ner-15",
+   "category": "named_entity_recognition",
+   "kind": "named_entity_recognition",
+   "target": "fireworks",
+   "ok": true,
+   "route_ok": true,
+   "tokens": 256,
+   "seconds": 20.02,
+   "answer": "Here are the named entities from the sentence:\n\n- **Samsung** — Organization\n- **LG** — Organization\n- **CES** — Event/Conference\n- **Las Vegas** — Location"
+  },
+  {
+   "id": "ner-16",
+   "category": "named_entity_recognition",
+   "kind": "named_entity_recognition",
+   "target": "fireworks",
+   "ok": true,
+   "route_ok": true,
+   "tokens": 245,
+   "seconds": 8.0,
+   "answer": "Here are the named entities from the sentence:\n\n- **Pope Francis** — Person\n- **Portugal** — Location\n- **World Youth Day** — Event\n- **Lisbon** — Location"
+  },
+  {
+   "id": "ner-17",
+   "category": "named_entity_recognition",
+   "kind": "named_entity_recognition",
+   "target": "fireworks",
+   "ok": true,
+   "route_ok": true,
+   "tokens": 236,
+   "seconds": 10.6,
+   "answer": "Here are the named entities from the sentence:\n\n- **Amazon** — Organization\n- **Arlington** — Location\n- **Virginia** — Location"
+  },
+  {
+   "id": "ner-18",
+   "category": "named_entity_recognition",
+   "kind": "named_entity_recognition",
+   "target": "fireworks",
+   "ok": true,
+   "route_ok": true,
+   "tokens": 251,
+   "seconds": 19.61,
+   "answer": "Here are the named entities from the sentence:\n\n- **Rafael Nadal** — Person\n- **French Open** — Event/Tournament\n- **Roland Garros** — Location (stadium/venue)\n- **Paris** — Location (city)"
+  },
+  {
+   "id": "ner-19",
+   "category": "named_entity_recognition",
+   "kind": "named_entity_recognition",
+   "target": "fireworks",
+   "ok": true,
+   "route_ok": true,
+   "tokens": 310,
+   "seconds": 9.68,
+   "answer": "Here are the named entities from the sentence:\n\n- **Berlin Wall** — Location/Landmark\n- **November 1989** — Date\n- **Germany** — Location/Country"
+  },
+  {
+   "id": "ner-20",
+   "category": "named_entity_recognition",
+   "kind": "named_entity_recognition",
+   "target": "fireworks",
+   "ok": true,
+   "route_ok": true,
+   "tokens": 164,
+   "seconds": 9.85,
+   "answer": "**Company names:** Spotify, Apple\n\n**Cities:** Stockholm, Cupertino"
+  },
+  {
+   "id": "ner-21",
+   "category": "named_entity_recognition",
+   "kind": "named_entity_recognition",
+   "target": "fireworks",
+   "ok": true,
+   "route_ok": true,
+   "tokens": 317,
+   "seconds": 20.2,
+   "answer": "Here are the named entities from the sentence:\n\n- **Dr. Jane Goodall** — Person\n- **Oxford University** — Organization\n- **Tanzania** — Location"
+  },
+  {
+   "id": "ner-22",
+   "category": "named_entity_recognition",
+   "kind": "named_entity_recognition",
+   "target": "fireworks",
+   "ok": true,
+   "route_ok": true,
+   "tokens": 222,
+   "seconds": 9.94,
+   "answer": "Here are the named entities from the sentence:\n\n- **The World Bank** — Organization\n- **Argentina** — Location\n- **September** — Date"
+  },
+  {
+   "id": "ner-23",
+   "category": "named_entity_recognition",
+   "kind": "named_entity_recognition",
+   "target": "fireworks",
+   "ok": true,
+   "route_ok": true,
+   "tokens": 265,
+   "seconds": 10.62,
+   "answer": "Here are the named entities from the sentence:\n\n- **Leonardo da Vinci** — Person\n- **Mona Lisa** — Work of Art\n- **Louvre** — Organization / Museum\n- **Paris** — Location"
+  },
+  {
+   "id": "ner-24",
+   "category": "named_entity_recognition",
+   "kind": "named_entity_recognition",
+   "target": "fireworks",
+   "ok": true,
+   "route_ok": true,
+   "tokens": 252,
+   "seconds": 9.38,
+   "answer": "Here are the named entities from the sentence:\n\n- **Boeing** — Organization\n- **Dreamliner** — Product/Other proper noun\n- **All Nippon Airways** — Organization\n- **Japan** — Location"
+  },
+  {
+   "id": "ner-25",
+   "category": "named_entity_recognition",
+   "kind": "named_entity_recognition",
+   "target": "fireworks",
+   "ok": true,
+   "route_ok": true,
+   "tokens": 255,
+   "seconds": 10.15,
+   "answer": "Here are the named entities from the sentence:\n\n- **Greta Thunberg** — Person\n- **European Parliament** — Organization\n- **Strasbourg** — Location"
+  }
+ ],
+ "elapsed_seconds": 144.3
+}

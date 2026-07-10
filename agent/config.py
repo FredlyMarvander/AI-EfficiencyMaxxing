@@ -9,7 +9,10 @@ import os
 DEFAULT_INPUT_PATH = "/input/tasks.json"
 DEFAULT_OUTPUT_PATH = "/output/results.json"
 DEFAULT_REQUEST_TIMEOUT_SECONDS = 30.0
-DEFAULT_MAX_TOKENS = 1024
+# Reasoning models (e.g. Kimi K2) bill their chain-of-thought as completion
+# tokens; the cap must cover reasoning + answer or the answer is truncated
+# away entirely. Unused headroom costs nothing.
+DEFAULT_MAX_TOKENS = 2048
 # The harness kills the container at 600s; stop early so results are written.
 HARD_RUNTIME_LIMIT_SECONDS = 600.0
 DEFAULT_MAX_RUNTIME_SECONDS = 540.0
@@ -38,6 +41,7 @@ class Settings:
     embedding_model_path: str = DEFAULT_EMBEDDING_MODEL_PATH
     local_model_path: str = DEFAULT_LOCAL_MODEL_PATH
     enable_local_model: bool = True
+    enable_deterministic: bool = True
     fireworks_concurrency: int = DEFAULT_FIREWORKS_CONCURRENCY
     local_n_ctx: int = DEFAULT_LOCAL_N_CTX
     local_n_threads: int = 4
@@ -45,6 +49,9 @@ class Settings:
     router_confidence_threshold: float = DEFAULT_ROUTER_CONFIDENCE_THRESHOLD
     router_margin_threshold: float = DEFAULT_ROUTER_MARGIN_THRESHOLD
     preferred_fireworks_model: str | None = None
+    # Minimum spacing between Fireworks requests (seconds); 0 disables the
+    # limiter. Useful when the API key has a tight per-minute quota.
+    min_request_interval: float = 0.0
 
 
 def load_settings() -> Settings:
@@ -101,6 +108,7 @@ def load_settings() -> Settings:
         ),
         local_model_path=os.getenv("LOCAL_GGUF_PATH", DEFAULT_LOCAL_MODEL_PATH),
         enable_local_model=_env_bool("ENABLE_LOCAL_MODEL", True),
+        enable_deterministic=_env_bool("ENABLE_DETERMINISTIC", True),
         fireworks_concurrency=_env_int(
             "FIREWORKS_CONCURRENCY",
             DEFAULT_FIREWORKS_CONCURRENCY,
@@ -127,6 +135,9 @@ def load_settings() -> Settings:
             maximum=1.0,
         ),
         preferred_fireworks_model=preferred_model,
+        min_request_interval=_env_float(
+            "FIREWORKS_MIN_INTERVAL", 0.0, minimum=0.0, maximum=60.0
+        ),
     )
 
 

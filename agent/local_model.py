@@ -29,14 +29,6 @@ SYSTEM_PROMPTS: dict[TaskKind, str] = {
         "Summarize faithfully and concisely. Preserve the main claims and avoid "
         "new information."
     ),
-    TaskKind.NER: (
-        "Extract ALL named entities: every person, organization, location, "
-        "date, and other proper noun in the text. Do not omit any. If the "
-        "user gives a format, follow it exactly. Otherwise answer with "
-        'compact JSON of plain strings, e.g. {"people":["Marie Curie"],'
-        '"organizations":["UNESCO"],"locations":["Paris"],"dates":["1903"],'
-        '"misc":[]}.'
-    ),
 }
 
 DEFAULT_SYSTEM_PROMPT = (

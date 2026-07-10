@@ -1,0 +1,73 @@
+{
+ "mode": "fireworks",
+ "local_model_available": false,
+ "results": [
+  {
+   "id": "fact-02",
+   "category": "factual",
+   "kind": "factual",
+   "target": "fireworks",
+   "ok": true,
+   "route_ok": true,
+   "tokens": 89,
+   "seconds": 12.11,
+   "answer": "The capital of Australia is Canberra."
+  },
+  {
+   "id": "fact-05",
+   "category": "factual",
+   "kind": "factual",
+   "target": "fireworks",
+   "ok": true,
+   "route_ok": true,
+   "tokens": 92,
+   "seconds": 6.47,
+   "answer": "Mercury is the planet closest to the sun."
+  },
+  {
+   "id": "fact-08",
+   "category": "factual",
+   "kind": "factual",
+   "target": "fireworks",
+   "ok": true,
+   "route_ok": true,
+   "tokens": 89,
+   "seconds": 9.27,
+   "answer": "The chemical formula of water is H₂O."
+  },
+  {
+   "id": "math-16",
+   "category": "math",
+   "kind": "math",
+   "target": "fireworks",
+   "ok": true,
+   "route_ok": true,
+   "tokens": 170,
+   "seconds": 9.62,
+   "answer": "Unit price: \\(2.50 \\div 5 = 0.50\\) dollars per pencil.\n\nCost for 8 pencils: \\(8 \\times 0.50 = 4.00\\) dollars.\n\n**Answer: 4.00 dollars**"
+  },
+  {
+   "id": "sent-05",
+   "category": "sentiment",
+   "kind": "sentiment",
+   "target": "fireworks",
+   "ok": true,
+   "route_ok": true,
+   "tokens": 209,
+   "seconds": 21.0,
+   "answer": "Unfavorable."
+  },
+  {
+   "id": "ner-07",
+   "category": "named_entity_recognition",
+   "kind": "named_entity_recognition",
+   "target": "fireworks",
+   "ok": true,
+   "route_ok": true,
+   "tokens": 289,
+   "seconds": 10.28,
+   "answer": "- **United Nations** — Organization  \n- **New York** — Location  \n- **Kenya** — Location"
+  }
+ ],
+ "elapsed_seconds": 40.9
+}

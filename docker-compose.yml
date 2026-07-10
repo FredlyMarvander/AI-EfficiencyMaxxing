@@ -6,10 +6,13 @@ services:
     environment:
       FIREWORKS_API_KEY: ${FIREWORKS_API_KEY}
       FIREWORKS_BASE_URL: ${FIREWORKS_BASE_URL:-https://api.fireworks.ai/inference/v1}
-      ALLOWED_MODELS: ${ALLOWED_MODELS:-minimax-m3}
-      MAX_TOKENS: ${MAX_TOKENS:-1024}
+      ALLOWED_MODELS: ${ALLOWED_MODELS:-accounts/fireworks/models/kimi-k2p7-code}
+      MAX_TOKENS: ${MAX_TOKENS:-2048}
       REQUEST_TIMEOUT_SECONDS: ${REQUEST_TIMEOUT_SECONDS:-30}
       MAX_RUNTIME_SECONDS: ${MAX_RUNTIME_SECONDS:-540}
+      ENABLE_LOCAL_MODEL: ${ENABLE_LOCAL_MODEL:-1}
+      ENABLE_DETERMINISTIC: ${ENABLE_DETERMINISTIC:-1}
+      FIREWORKS_MIN_INTERVAL: ${FIREWORKS_MIN_INTERVAL:-0}
     volumes:
       - ./input:/input:ro
       - ./output:/output

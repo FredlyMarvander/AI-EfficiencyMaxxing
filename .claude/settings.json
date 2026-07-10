@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(docker run --rm --env-file .env -v \"${PWD}:/app\" track1-agent:latest python -m eval.run_modes --modes fireworks,det --concurrency 6)",
+      "PowerShell(docker run --rm --env-file .env -v \"${PWD}:/app\" track1-agent:latest python -m eval.run_modes --modes hybrid --concurrency 6)",
+      "PowerShell(docker run --rm --env-file .env -v \"${PWD}:/app\" track1-agent:latest python -m eval.run_modes --modes fireworks --category sentiment --limit 12 --concurrency 2)",
+      "PowerShell(docker run --rm --env-file .env -v \"${PWD}:/app\" track1-agent:latest python -m eval.probe_api)",
+      "PowerShell(docker run --rm --env-file .env -v \"${PWD}:/app\" track1-agent:latest sh -c \"python -m eval.test_deterministic > /tmp/t.log 2>&1; tail -1 /tmp/t.log; python -m eval.route_check 2>/dev/null | sed -n '12,16p'\")",
+      "PowerShell(docker run --rm -v \"${PWD}:/app\" track1-agent:latest python -m eval.test_deterministic 2>&1 | Select-Object -Last 3)",
+      "PowerShell(docker run --rm --env-file .env -v \"${PWD}:/app\" track1-agent:latest python -m eval.run_modes --modes hybrid --concurrency 2)",
+      "PowerShell(docker run --rm -v \"${PWD}:/app\" track1-agent:latest python -m eval.summarize_reports eval/reports/det.json eval/reports/fireworks.json eval/reports/hybrid.json 2>&1 | Select-String -NotMatch \"^  \")",
+      "Bash(docker run *)",
+      "PowerShell(docker run --rm -v \"${PWD}:/app\" track1-agent:latest python -m eval.summarize_reports eval/reports/hybrid.json 2>&1 | Select-String -Pattern \"^failures\" -Context 0,20)",
+      "PowerShell(docker run --rm -v \"${PWD}:/app\" track1-agent:latest python -m eval.summarize_reports eval/reports/hybrid.json > hybrid_summary.txt 2>&1; Get-Content hybrid_summary.txt | Select-Object -Last 30)",
+      "PowerShell(docker run --rm -v \"${PWD}:/app\" track1-agent:latest python -m eval.regrade_reports eval/reports/det.json eval/reports/fireworks.json > regrade_summary.txt 2>&1; Get-Content regrade_summary.txt | Select-String -NotMatch \"^  \")",
+      "PowerShell(docker run --rm --env-file .env -v \"${PWD}:/app\" track1-agent:latest python -m eval.run_modes --modes fireworks --ids fact-02,fact-05,fact-08,sent-05,ner-07,math-16 --concurrency 2)",
+      "PowerShell(docker run --rm --env-file .env -v \"${PWD}:/app\" track1-agent:latest python -m eval.run_modes --modes hybrid --category named_entity_recognition --concurrency 2)",
+      "PowerShell(docker run --rm --env-file .env -v \"${PWD}:/app\" track1-agent:latest python -m eval.run_modes --modes hybrid --concurrency 3)"
+    ]
+  }
+}

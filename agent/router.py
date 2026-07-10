@@ -11,6 +11,7 @@ from typing import Iterable
 
 import numpy as np
 
+from agent import deterministic
 from agent.config import Settings
 
 
@@ -28,20 +29,26 @@ class TaskKind(str, Enum):
 class RouteTarget(str, Enum):
     LOCAL = "local"
     FIREWORKS = "fireworks"
+    DETERMINISTIC = "deterministic"
 
 
 LOCAL_TASKS = {
     TaskKind.FACTUAL,
     TaskKind.SENTIMENT,
     TaskKind.SUMMARY,
-    TaskKind.NER,
 }
 
+# NER measured at 52% accuracy on the bundled Qwen2.5-1.5B model (215-case
+# eval, 2026-07-10): it consistently drops one entity per multi-entity
+# sentence and, in a couple of cases, hallucinated an entity lifted from its
+# own system-prompt example. Factual/sentiment/summary all measured at or
+# near 100% on the same model, so only NER is excluded from local routing.
 FIREWORKS_TASKS = {
     TaskKind.MATH,
     TaskKind.LOGIC,
     TaskKind.DEBUGGING,
     TaskKind.CODE,
+    TaskKind.NER,
 }
 
 
@@ -52,6 +59,9 @@ class RouteDecision:
     confidence: float
     margin: float
     reason: str
+    # Populated only for DETERMINISTIC routes: the exact, locally computed
+    # answer, so the caller never needs to re-run the solver.
+    answer: str | None = None
 
 
 SEED_PROMPTS: dict[TaskKind, tuple[str, ...]] = {
@@ -147,6 +157,21 @@ class SemanticRouter:
         self.seed_vectors = self.encoder.encode(seed_texts)
 
     def route(self, prompt: str) -> RouteDecision:
+        # Exact local solvers outrank everything: they only fire on prompts
+        # that reduce to pure arithmetic, so a hit is always correct and
+        # costs zero Fireworks tokens.
+        if self.settings.enable_deterministic:
+            solved = deterministic.try_solve(prompt)
+            if solved is not None:
+                return RouteDecision(
+                    TaskKind.MATH,
+                    RouteTarget.DETERMINISTIC,
+                    1.0,
+                    1.0,
+                    "deterministic",
+                    answer=solved,
+                )
+
         lexical_kind = _lexical_kind(prompt)
         kind, confidence, margin = self._semantic_kind(prompt)
         reason = "semantic"
@@ -253,18 +278,20 @@ def classify_prompt(prompt: str, settings: Settings | None = None) -> TaskKind:
 
 def output_budget(kind: TaskKind, prompt: str, default_max_tokens: int) -> int:
     # Unused max_tokens costs nothing (billing follows generated tokens), so
-    # budgets only guard against truncation; err generous where answers can
-    # legitimately run long.
+    # budgets only guard against truncation. Reasoning models (Kimi K2,
+    # DeepSeek, Qwen thinking) bill chain-of-thought as completion tokens and
+    # a budget that cannot fit reasoning + answer truncates the answer away,
+    # so every budget is sized for reasoning headroom.
     words = len(prompt.split())
     budgets = {
-        TaskKind.SENTIMENT: 24,
-        TaskKind.FACTUAL: 192 if _wants_explanation(prompt) else 96,
-        TaskKind.NER: 192,
-        TaskKind.MATH: 224,
-        TaskKind.LOGIC: 224,
-        TaskKind.SUMMARY: min(384, max(96, words // 3)),
-        TaskKind.DEBUGGING: 768,
-        TaskKind.CODE: 768,
+        TaskKind.SENTIMENT: 320,
+        TaskKind.FACTUAL: 512 if _wants_explanation(prompt) else 448,
+        TaskKind.NER: 640,
+        TaskKind.MATH: 1024,
+        TaskKind.LOGIC: 1024,
+        TaskKind.SUMMARY: min(768, max(384, words // 2)),
+        TaskKind.DEBUGGING: 1536,
+        TaskKind.CODE: 1536,
     }
     return max(16, min(default_max_tokens, budgets[kind]))
 
@@ -339,17 +366,41 @@ _DEBUGGING_PATTERNS = (
     r"\bfailing tests?\b",
     r"\bexceptions?\b",
     r"\bcompiler error\b",
+    r"\bsyntax error\b",
+    r"\bruntime error\b",
+    r"\binfinite loop\b",
+    r"\boff[- ]by[- ]one\b",
+    r"\b(?:throws?|raises?|throwing|raising) an? error\b",
+)
+
+# Softer debugging cues ("why does this fail", "returns the wrong result")
+# also appear in math and logic prompts, so they only count when the prompt
+# visibly contains code.
+_DEBUGGING_SOFT_PATTERNS = (
+    r"\bwhy (?:does|do|is|isn'?t|won'?t|doesn'?t|did)\b.{0,60}\b(?:fail\w*|work\w*|crash\w*|hang\w*|break\w*)\b",
+    r"\bwhy does (?:this|the|my|it)\b.{0,80}\b(?:prints?|returns?|raises?|throws?|evaluates?)\b",
+    r"\bwhat(?:'s| is) wrong\b",
+    r"\breturns? the wrong\b",
+    r"\bwrong (?:result|output|value|answer)s?\b",
+    r"\bincorrect (?:result|output|value|answer)s?\b",
+    r"\bunexpected (?:result|output|behavio\w*)\b",
+    r"\bdoesn'?t (?:work|terminate|return|print|stop|compile|run)\b",
+    r"\bnot work(?:ing)?\b",
+    r"\bnever (?:terminates?|stops?|returns?|finishes?|ends?)\b",
+    r"\bfix (?:it|this|the (?:function|loop|program|script|query|method))\b",
 )
 
 _CODE_PATTERNS = (
     r"\bwrite (?:a|an|the|some)? ?(?:\w+ )?function\b",
-    r"\bwrite (?:a |the )?code\b",
-    r"\bgenerate (?:a |the )?code\b",
-    r"\bimplement (?:a|an|the) (?:\w+ )?(?:function|class|method)\b",
-    r"\bcreate (?:a|an|the) script\b",
-    r"\b(?:python|javascript|java|c\+\+) function\b",
+    r"\bwrite (?:a |the |some )?code\b",
+    r"\bgenerate (?:a |the |some )?code\b",
+    r"\bimplement (?:a|an|the)\b",
+    r"\bwrite (?:a|an|the) (?:\w+ )?(?:program|script|method|class|query|regex|regular expression)\b",
+    r"\bcreate (?:a|an|the) (?:\w+ )?(?:program|script|function|class|method|query)\b",
+    r"\b(?:python|javascript|typescript|java|c\+\+|c#|go|rust|ruby|php) (?:function|program|script|class|snippet)\b",
     r"\bsql quer(?:y|ies)\b",
     r"\bcomplete the code\b",
+    r"\bfill in the (?:missing|blank|rest of the)?\s*(?:code|function|implementation|body)\b",
 )
 
 _SUMMARY_PATTERNS = (
@@ -357,7 +408,20 @@ _SUMMARY_PATTERNS = (
     r"\btl;?dr\b",
     r"\bcondens\w*\b",
     r"\babstract of\b",
-    r"\bmain points\b",
+    r"\bmain points?\b",
+    r"\bkey takeaways?\b",
+    r"\bkey points?\b",
+    r"\bone[- ]sentence (?:summary|version|overview|recap)\b",
+    r"\bboil (?:this|it|the \w+) down\b",
+    r"\bshorten (?:this|the)\b",
+)
+
+# Length constraints suggest summarization only when nothing stronger
+# matched: "in one sentence, define X" is still factual.
+_SUMMARY_WEAK_PATTERNS = (
+    r"\bin (?:one|two|a single) sentences?\b",
+    r"\bin (?:at most |under |no more than )?\d+ words\b",
+    r"\bin \d+ words or (?:fewer|less)\b",
 )
 
 _NER_PATTERNS = (
@@ -366,6 +430,12 @@ _NER_PATTERNS = (
     r"\bpeople, organizations\b",
     r"\bpersons, places\b",
     r"\bner\b",
+    r"\bproper nouns?\b",
+    r"\b(?:extract|list|identify|find|pull out|return) (?:the |all |any |every )*"
+    r"(?:names?|people|persons?|places?|locations?|organi[sz]ations?|companies|dates?)\b",
+    r"\b(?:names?|people|persons?|places?|locations?|organi[sz]ations?|companies|cities|dates?)\b"
+    r"[^.]{0,60}\bmentioned\b",
+    r"\bwho, (?:what, )?where,? (?:and |or )?when\b",
 )
 
 _SENTIMENT_PATTERNS = (
@@ -376,6 +446,13 @@ _SENTIMENT_PATTERNS = (
     r"\bnegative or positive\b",
     r"\bclassify the review\b",
     r"\bcustomer feedback\b",
+    r"\btone of\b",
+    r"\b(?:overall |emotional )?tone\b[^.]{0,40}\b(?:review|text|message|comment|passage|author|writer)\b",
+    r"\battitude (?:expressed|conveyed|of the)\b",
+    r"\bfavou?rable(?:,| or | / |/)\s*unfavou?rable\b",
+    r"\bunfavou?rable(?:,| or | / |/)\s*favou?rable\b",
+    r"\bhow does the (?:author|writer|reviewer|customer|speaker) feel\b",
+    r"\b(?:happy|satisfied) or (?:unhappy|dissatisfied)\b",
 )
 
 _MATH_PATTERNS = (
@@ -386,9 +463,25 @@ _MATH_PATTERNS = (
     r"\bpercent(?:age)?s?\b",
     r"\bratios?\b",
     r"\baverage\b",
+    r"\bmean of\b",
+    r"\bmedian\b",
     r"\barithmetic\b",
     r"\bhow many\b",
     r"\bhow much\b",
+    r"\barea of\b",
+    r"\bperimeter\b",
+    r"\bvolume of\b",
+    r"\bradius\b",
+    r"\bsum of\b",
+    r"\bnext number\b",
+    r"\bsequence \d|\bin the sequence\b",
+    r"\bgreatest common divisor\b|\bgcd\b",
+    r"\bleast common multiple\b|\blcm\b",
+    r"\bsquare root\b|\bsquared\b",
+    r"\bdecimal places?\b",
+    r"\bconvert \d",
+    r"\b(?:half|third|quarters?|three quarters) of\b",
+    r"\binterest\b.*\d|\d.*\binterest\b",
 )
 
 _LOGIC_PATTERNS = (
@@ -401,6 +494,21 @@ _LOGIC_PATTERNS = (
     r"\bknights and knaves\b",
     r"\bknaves?\b",
     r"\bis the argument valid\b",
+    r"\bargument\b[^.]{0,40}\b(?:valid|invalid|sound|follows?|logical(?:ly)?)\b",
+    r"\bwrong with (?:this|the|my) argument\b",
+    r"\bsyllogism\b",
+    r"\bvalid or invalid\b",
+    r"\bcontrapositive\b",
+    r"\bmodus (?:ponens|tollens)\b",
+    r"\bdoes it (?:logically )?follow\b",
+    r"\bwhat can (?:you|we) conclude\b",
+    r"\bnecessarily\b",
+    r"\b(?:taller|shorter|older|younger|faster|slower) than\b",
+    r"\bfinished (?:the \w+ )?(?:before|after)\b",
+    r"\bwho is the (?:shortest|tallest|oldest|youngest)\b",
+    # A prompt that opens with a quantifier or conditional is almost always
+    # a deduction exercise ("All of Anna's pets are cats. ...").
+    r"^\s*(?:if|all|every|some)\b",
 )
 
 
@@ -411,15 +519,18 @@ def _matches_any(text: str, patterns: tuple[str, ...]) -> bool:
 def _lexical_kind(prompt: str) -> TaskKind | None:
     text = prompt.lower()
 
-    # Order matters. Misrouting into a Fireworks category is recoverable (the
-    # remote system prompt is generic), but misrouting into a local category
-    # applies a task-specific system prompt, so instruction verbs like
-    # "summarize" must win over topic words like "customer feedback".
+    # Order matters: a lexical match overrides the semantic router, so
+    # instruction verbs ("summarize", "extract") must win over topic words
+    # ("customer feedback"), and code-context checks must run before math,
+    # because code snippets are full of arithmetic-looking fragments.
     if _matches_any(text, _DEBUGGING_PATTERNS):
         return TaskKind.DEBUGGING
 
     if _asks_for_code(text):
         return TaskKind.CODE
+
+    if _has_code_signals(text) and _matches_any(text, _DEBUGGING_SOFT_PATTERNS):
+        return TaskKind.DEBUGGING
 
     if _matches_any(text, _SUMMARY_PATTERNS):
         return TaskKind.SUMMARY
@@ -436,12 +547,29 @@ def _lexical_kind(prompt: str) -> TaskKind | None:
     if _matches_any(text, _LOGIC_PATTERNS):
         return TaskKind.LOGIC
 
+    if _matches_any(text, _SUMMARY_WEAK_PATTERNS) and len(text.split()) > 40:
+        return TaskKind.SUMMARY
+
     if text.lstrip().startswith(
         ("who ", "what ", "when ", "where ", "which ", "define ", "name ")
     ):
         return TaskKind.FACTUAL
 
     return None
+
+
+def _has_code_signals(text: str) -> bool:
+    return bool(
+        "```" in text
+        or re.search(
+            r"\bdef \w+|\bfunction\b|\breturn\b|\bconsole\.log\b|\bprint\s*\(|"
+            r"[{};]|=>|\bclass \w+|\bimport \w+|\bselect\b.{0,60}\bfrom\b|"
+            r"\bfor\s*\(|\bwhile\s*\(|\bwhile \w+ [<>=]|\bcode\b|\bfunctions?\b|"
+            r"\bscripts?\b|\bquer(?:y|ies)\b|\bprograms?\b|\bsnippets?\b|"
+            r"\w+\[\d+\]|=\s*['\"]",
+            text,
+        )
+    )
 
 
 def _asks_for_code(text: str) -> bool:
