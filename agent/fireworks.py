@@ -87,6 +87,32 @@ def _note_request_succeeded() -> None:
 class FireworksAPIError(RuntimeError):
     """Raised for transport or response errors from Fireworks AI."""
 
+    def __init__(self, message: str, status: int | None = None) -> None:
+        super().__init__(message)
+        self.status = status
+
+
+class ModelUnavailableError(FireworksAPIError):
+    """A model that definitively does not exist or is not deployed.
+
+    Unlike transient failures (429/5xx/timeouts), this cannot heal within one
+    run, so the model is cached as dead and skipped for all later tasks.
+    """
+
+    def __init__(self, message: str, model: str, status: int | None = None) -> None:
+        super().__init__(message, status=status)
+        self.model = model
+
+
+def _is_model_unavailable_error(status: int | None, message: str) -> bool:
+    if status != 404:
+        return False
+    lowered = message.lower()
+    return any(
+        marker in lowered
+        for marker in ("model", "not found", "not_found", "not deployed", "no such")
+    )
+
 
 @dataclass
 class FireworksClient:
@@ -97,6 +123,8 @@ class FireworksClient:
         self.last_usage: dict[str, int | str] = _empty_usage()
         self.total_usage: dict[str, int] = _empty_total_usage()
         self._usage_lock = threading.Lock()
+        self._unavailable_models: set[str] = set()
+        self._unavailable_lock = threading.Lock()
         self.session = requests.Session()
         self.session.headers.update(
             {
@@ -137,6 +165,11 @@ class FireworksClient:
             raise FireworksAPIError(
                 f"model {selected_model!r} is not present in ALLOWED_MODELS"
             )
+        if self.is_model_unavailable(selected_model):
+            raise ModelUnavailableError(
+                f"model {selected_model!r} was already reported unavailable",
+                model=selected_model,
+            )
 
         token_limit = max_tokens or self.settings.default_max_tokens
         timeout = timeout_seconds or self.settings.request_timeout_seconds
@@ -150,7 +183,22 @@ class FireworksClient:
             "max_tokens": token_limit,
         }
 
-        data = self._post_with_retries(payload, min(timeout, 30.0))
+        try:
+            data = self._post_with_retries(payload, min(timeout, 30.0))
+        except ModelUnavailableError:
+            raise
+        except FireworksAPIError as exc:
+            if _is_model_unavailable_error(exc.status, str(exc)):
+                with self._unavailable_lock:
+                    self._unavailable_models.add(selected_model)
+                logging.warning(
+                    "model %s marked unavailable for the rest of this run",
+                    selected_model,
+                )
+                raise ModelUnavailableError(
+                    str(exc), model=selected_model, status=exc.status
+                ) from exc
+            raise
 
         usage = _extract_usage(data, selected_model)
         with self._usage_lock:
@@ -203,6 +251,7 @@ class FireworksClient:
         """
 
         last_error = "request failed"
+        last_status: int | None = None
         for attempt in range(MAX_TRANSPORT_ATTEMPTS):
             _reserve_request_slot(self.settings.min_request_interval)
             try:
@@ -223,10 +272,11 @@ class FireworksClient:
                             "response was not valid JSON"
                         ) from exc
                 last_error = _format_http_error(response)
+                last_status = response.status_code
                 if response.status_code == 429:
                     _note_rate_limited(_retry_after_seconds(response))
                 if response.status_code not in RETRYABLE_STATUS:
-                    raise FireworksAPIError(last_error)
+                    raise FireworksAPIError(last_error, status=response.status_code)
 
             if attempt == MAX_TRANSPORT_ATTEMPTS - 1:
                 break
@@ -246,7 +296,11 @@ class FireworksClient:
             )
             time.sleep(delay)
 
-        raise FireworksAPIError(last_error)
+        raise FireworksAPIError(last_error, status=last_status)
+
+    def is_model_unavailable(self, model: str) -> bool:
+        with self._unavailable_lock:
+            return model in self._unavailable_models
 
 
 def call_fireworks_api(

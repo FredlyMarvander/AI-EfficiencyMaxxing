@@ -64,6 +64,50 @@ _AVERAGE_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+# Single-variable linear equation: [coef]VAR [± const] = rhs. Exactly one
+# variable letter may appear; anything else (second variable, powers, story
+# context) fails the anchored match and flows to the LLM.
+_EQUATION_CORE = (
+    r"(-?\d+(?:\.\d+)?)?\s*\*?\s*([a-z])\s*"
+    r"(?:([+-])\s*(\d+(?:\.\d+)?))?\s*=\s*(-?\d+(?:\.\d+)?)"
+)
+
+_EQUATION_SOLVE_PATTERN = re.compile(
+    r"^\s*(?:please\s+)?(?:solve|find|determine|calculate)?\s*"
+    r"(?:for\s+([a-z])\s*)?[:,]?\s*(?:the\s+)?(?:linear\s+)?(?:equation\s*)?"
+    r"[:,]?\s*" + _EQUATION_CORE +
+    r"\s*(?:for\s+(?:the\s+value\s+of\s+)?([a-z]))?\s*[?.!]?\s*$",
+    re.IGNORECASE,
+)
+
+_EQUATION_WHATIS_PATTERN = re.compile(
+    r"^\s*(?:what\s+is|find)\s+([a-z])\s+(?:if|when|given(?:\s+that)?)\s+"
+    + _EQUATION_CORE + r"\s*[?.!]?\s*$",
+    re.IGNORECASE,
+)
+
+_EQUATION_IF_PATTERN = re.compile(
+    r"^\s*if\s+" + _EQUATION_CORE +
+    r"\s*,?\s*(?:then\s+)?what\s+is\s+([a-z])\s*[?.!]?\s*$",
+    re.IGNORECASE,
+)
+
+# Temperature conversion between Fahrenheit, Celsius, and Kelvin: the
+# formulas are exact, so a matched prompt is always answerable.
+_TEMPERATURE_PATTERN = re.compile(
+    r"^\s*(?:please\s+)?(?:convert\s+|what\s+is\s+)?(-?\d+(?:\.\d+)?)\s*"
+    r"(?:°\s*|degrees?\s+)?(fahrenheit|celsius|centigrade|kelvin|[fck])\s+"
+    r"(?:to|into|in)\s+(?:°\s*|degrees?\s+)?(fahrenheit|celsius|centigrade|kelvin|[fck])"
+    r"\s*(?:\([^)]{0,60}\))?\s*[?.!]?\s*$",
+    re.IGNORECASE,
+)
+
+_TEMPERATURE_UNITS = {
+    "f": "F", "fahrenheit": "F",
+    "c": "C", "celsius": "C", "centigrade": "C",
+    "k": "K", "kelvin": "K",
+}
+
 
 def try_solve(prompt: str) -> str | None:
     """Return an exact answer string, or None when not provably safe."""
@@ -72,7 +116,13 @@ def try_solve(prompt: str) -> str | None:
     if not text or len(text) > 300:
         return None
 
-    for solver in (_solve_percent_of, _solve_average, _solve_arithmetic):
+    for solver in (
+        _solve_percent_of,
+        _solve_average,
+        _solve_temperature,
+        _solve_linear_equation,
+        _solve_arithmetic,
+    ):
         answer = solver(text)
         if answer is not None:
             return answer
@@ -102,6 +152,66 @@ def _solve_average(text: str) -> str | None:
     if not numbers:
         return None
     return _format_number(sum(numbers) / len(numbers))
+
+
+def _solve_linear_equation(text: str) -> str | None:
+    asked_prefix = asked_suffix = None
+    match = _EQUATION_SOLVE_PATTERN.match(text)
+    if match:
+        asked_prefix, coef_s, var, sign, const_s, rhs_s, asked_suffix = match.groups()
+    else:
+        match = _EQUATION_WHATIS_PATTERN.match(text)
+        if match:
+            asked_prefix, coef_s, var, sign, const_s, rhs_s = match.groups()
+        else:
+            match = _EQUATION_IF_PATTERN.match(text)
+            if not match:
+                return None
+            coef_s, var, sign, const_s, rhs_s, asked_suffix = match.groups()
+
+    # A bare "x = 5" has nothing to solve; require an actual operation.
+    if coef_s is None and const_s is None:
+        return None
+
+    var = var.lower()
+    for asked in (asked_prefix, asked_suffix):
+        if asked and asked.lower() != var:
+            return None  # asked about a different symbol than the equation uses
+
+    coefficient = float(coef_s) if coef_s else 1.0
+    if coefficient == 0:
+        return None
+    constant = float(const_s) if const_s else 0.0
+    if sign == "-":
+        constant = -constant
+    value = (float(rhs_s) - constant) / coefficient
+    return f"{var} = {_format_number(value)}"
+
+
+def _solve_temperature(text: str) -> str | None:
+    match = _TEMPERATURE_PATTERN.match(text)
+    if not match:
+        return None
+
+    value = float(match.group(1))
+    source = _TEMPERATURE_UNITS[match.group(2).lower()]
+    target = _TEMPERATURE_UNITS[match.group(3).lower()]
+    if source == target:
+        return None
+
+    celsius = {
+        "F": (value - 32.0) * 5.0 / 9.0,
+        "K": value - 273.15,
+        "C": value,
+    }[source]
+    converted = {
+        "C": celsius,
+        "F": celsius * 9.0 / 5.0 + 32.0,
+        "K": celsius + 273.15,
+    }[target]
+    suffix = {"C": "°C", "F": "°F", "K": "K"}[target]
+    formatted = f"{converted:.2f}".rstrip("0").rstrip(".")
+    return f"{formatted}{suffix}"
 
 
 def _solve_arithmetic(text: str) -> str | None:

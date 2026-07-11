@@ -9,9 +9,12 @@ AI for hard reasoning), and writes `/output/results.json` before exiting.
 
 1. **Deterministic solvers** (`agent/deterministic.py`): prompts that reduce
    to pure arithmetic ("Calculate 17 multiplied by 23", "What is 15% of
-   240?", "average of 4, 8, 15") are solved exactly in Python at zero token
-   cost. The solvers only fire when the whole prompt is provably such a
-   question; anything with story context or units flows to the LLM.
+   240?", "average of 4, 8, 15"), single-variable linear equations
+   ("Solve 2x + 5 = 19 for x"), or temperature conversions ("Convert 100
+   Fahrenheit to Celsius") are solved exactly in Python at zero token cost.
+   The solvers only fire when the whole prompt is provably such a question;
+   anything with story context, extra units, or a second variable flows to
+   the LLM.
 2. **Two-stage router** (`agent/router.py`): a word-boundary lexical layer
    catches explicit and hidden-style signals ("summarize", "key takeaway",
    "tone of", "why does this fail"), and a semantic layer embeds the prompt
@@ -74,7 +77,7 @@ spaces requests for keys with tight quotas), `PREFERRED_FIREWORKS_MODEL`,
 |-- main.py                 # batch entry point: parallel lanes, deadline, atomic writes
 |-- agent/
 |   |-- config.py           # runtime env parsing and validation
-|   |-- deterministic.py    # exact zero-token solvers (arithmetic, %, averages)
+|   |-- deterministic.py    # exact zero-token solvers (arithmetic, %, averages, linear equations, temperature)
 |   |-- fireworks.py        # Fireworks client: retry/backoff, usage, truncation retry
 |   |-- io.py               # /input and /output JSON helpers (atomic writes)
 |   |-- local_model.py      # llama.cpp GGUF wrapper with per-category prompts

@@ -39,7 +39,10 @@ def looks_correct(case: dict, output: str) -> bool:
     expected = str(case.get("expected", "") or "").strip()
     if expected:
         return _match_term(expected, text)
-    return len(text) > 20
+    # Fail closed: a case without any expected specification cannot pass.
+    # Every case in both test files declares expected terms, so nothing
+    # relies on the old "any long output counts" fallback.
+    return False
 
 
 def _match_term(term: str, text: str) -> bool:

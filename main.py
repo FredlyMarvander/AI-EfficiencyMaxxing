@@ -191,6 +191,9 @@ def answer_task(
         decision.kind,
         preferred_model=settings.preferred_fireworks_model,
     ):
+        if client.is_model_unavailable(model):
+            logging.info("skipping unavailable model %s for task %s", model, task_id)
+            continue
         try:
             answer, usage = client.complete_with_usage(
                 prompt=prompt,
