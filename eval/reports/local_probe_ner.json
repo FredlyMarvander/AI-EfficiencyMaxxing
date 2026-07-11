@@ -1,0 +1,179 @@
+{
+ "results": [
+  {
+   "id": "ner-01",
+   "category": "named_entity_recognition",
+   "ok": false,
+   "seconds": 0.4,
+   "answer": "Brussels"
+  },
+  {
+   "id": "ner-02",
+   "category": "named_entity_recognition",
+   "ok": false,
+   "seconds": 0.3,
+   "answer": "GitHub: Microsoft"
+  },
+  {
+   "id": "ner-03",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 0.5,
+   "answer": "Amazon River: river\nBrazil: country\nPeru: country"
+  },
+  {
+   "id": "ner-04",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 0.5,
+   "answer": "Lionel Messi\nInter Miami\nParis Saint-Germain"
+  },
+  {
+   "id": "ner-05",
+   "category": "named_entity_recognition",
+   "ok": false,
+   "seconds": 0.2,
+   "answer": "Kentucky: Toyota"
+  },
+  {
+   "id": "ner-06",
+   "category": "named_entity_recognition",
+   "ok": false,
+   "seconds": 0.3,
+   "answer": "Marie Curie: Person"
+  },
+  {
+   "id": "ner-07",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 0.5,
+   "answer": "United Nations headquarters: organization\nNew York: location\nKenya: location"
+  },
+  {
+   "id": "ner-08",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 0.3,
+   "answer": "Shakespeare\nHamlet\nLondon"
+  },
+  {
+   "id": "ner-09",
+   "category": "named_entity_recognition",
+   "ok": false,
+   "seconds": 0.5,
+   "answer": "NASA - December 25, 2021"
+  },
+  {
+   "id": "ner-10",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 0.7,
+   "answer": "Cristiano Ronaldo: PERSON\nAl Nassr: ORGANIZATION\nSaudi Arabia: LOCATION"
+  },
+  {
+   "id": "ner-11",
+   "category": "named_entity_recognition",
+   "ok": false,
+   "seconds": 0.4,
+   "answer": "Eiffel Tower: building\nParis: location"
+  },
+  {
+   "id": "ner-12",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 1.1,
+   "answer": "Sundar Pichai: person\nGoogle: organization\nZurich: location"
+  },
+  {
+   "id": "ner-13",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 1.2,
+   "answer": "The: Article\nTitanic: Proper noun, proper noun\nsank: Verb\nNorth Atlantic: Proper noun\nApril: Proper noun\n1912: Proper noun"
+  },
+  {
+   "id": "ner-14",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 1.1,
+   "answer": "Neil Armstrong: person\nMoon: location\nJuly 1969: date"
+  },
+  {
+   "id": "ner-15",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 0.7,
+   "answer": "Samsung\nLG\nCES\nLas Vegas"
+  },
+  {
+   "id": "ner-16",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 0.8,
+   "answer": "Pope Francis: Person\nPortugal: Location\nWorld Youth Day: Event\nLisbon: Location"
+  },
+  {
+   "id": "ner-17",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 0.3,
+   "answer": "Amazon\nArlington, Virginia"
+  },
+  {
+   "id": "ner-18",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 0.6,
+   "answer": "Rafael Nadal\nFrench Open\nRoland Garros\nParis"
+  },
+  {
+   "id": "ner-19",
+   "category": "named_entity_recognition",
+   "ok": false,
+   "seconds": 0.9,
+   "answer": "Berlin Wall: location\nNovember: date\nGermany: location"
+  },
+  {
+   "id": "ner-20",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 0.4,
+   "answer": "Spotify: Stockholm\nApple: Cupertino"
+  },
+  {
+   "id": "ner-21",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 0.7,
+   "answer": "Dr. Jane Goodall: Person\nOxford University: Organization\nTanzania: Location"
+  },
+  {
+   "id": "ner-22",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 0.3,
+   "answer": "World Bank\nArgentina\nSeptember"
+  },
+  {
+   "id": "ner-23",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 0.8,
+   "answer": "Leonardo da Vinci: Person\nMona Lisa: Object\nLouvre: Location\nParis: Location"
+  },
+  {
+   "id": "ner-24",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 0.4,
+   "answer": "Boeing: All Nippon Airways: Japan"
+  },
+  {
+   "id": "ner-25",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 0.7,
+   "answer": "Greta Thunberg is a person. Strasbourg is a location. European Parliament is an organization."
+  }
+ ]
+}

@@ -21,13 +21,27 @@ SYSTEM_PROMPTS: dict[TaskKind, str] = {
         "name, date, place, or number, return only that plus essential context."
     ),
     TaskKind.SENTIMENT: (
-        "Classify sentiment. Return only one label unless the user explicitly "
-        "asks for more: Positive, Negative, or Neutral. Use Neutral for "
-        "factual statements that express no opinion or emotion."
+        "Classify sentiment. Return only one label, using the label set the "
+        "prompt requests (e.g. favorable/unfavorable); otherwise Positive, "
+        "Negative, or Neutral. Use Neutral for factual statements that "
+        "express no opinion or emotion."
     ),
     TaskKind.SUMMARY: (
         "Summarize faithfully and concisely. Preserve the main claims and avoid "
         "new information."
+    ),
+    # No concrete example entities here: an earlier prompt included one and
+    # the model copied it into answers for unrelated sentences.
+    TaskKind.NER: (
+        "List every named entity that appears in the given text: all people, "
+        "organizations, locations, dates, and other proper nouns. Follow the "
+        "requested format if one is given. Never output an entity that is not "
+        "in the text."
+    ),
+    TaskKind.CODE: (
+        "Write the requested code exactly as specified, using the required "
+        "names. Output one fenced code block and nothing else unless an "
+        "explanation is requested."
     ),
 }
 

@@ -22,9 +22,11 @@ from agent.router import (
     RouteDecision,
     RouteTarget,
     SemanticRouter,
+    local_output_budget,
     ordered_models,
     output_budget,
 )
+from agent.validate import validate_local_answer
 
 
 logging.basicConfig(
@@ -175,9 +177,17 @@ def answer_task(
 
     if decision.target is RouteTarget.LOCAL and settings.enable_local_model:
         model = local_model or LocalGGUFModel(settings)
+        local_budget = local_output_budget(
+            decision.kind, prompt, settings.default_max_tokens
+        )
         try:
-            answer = model.complete(prompt, decision.kind, max_tokens)
-            return {"task_id": task_id, "answer": answer}
+            answer = model.complete(prompt, decision.kind, local_budget)
+            if validate_local_answer(decision.kind, prompt, answer):
+                return {"task_id": task_id, "answer": answer}
+            logging.info(
+                "local answer for task %s failed validation; escalating to Fireworks",
+                task_id,
+            )
         except LocalModelError as exc:
             logging.warning(
                 "local model failed for task %s; falling back to Fireworks: %s",

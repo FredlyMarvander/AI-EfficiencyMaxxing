@@ -7,31 +7,38 @@ AI for hard reasoning), and writes `/output/results.json` before exiting.
 
 ## How It Works
 
-1. **Deterministic solvers** (`agent/deterministic.py`): prompts that reduce
-   to pure arithmetic ("Calculate 17 multiplied by 23", "What is 15% of
-   240?", "average of 4, 8, 15"), single-variable linear equations
-   ("Solve 2x + 5 = 19 for x"), or temperature conversions ("Convert 100
-   Fahrenheit to Celsius") are solved exactly in Python at zero token cost.
-   The solvers only fire when the whole prompt is provably such a question;
-   anything with story context, extra units, or a second variable flows to
-   the LLM.
+1. **Deterministic solvers** (`agent/deterministic.py` +
+   `agent/word_problems.py`): prompts that reduce to pure arithmetic,
+   percentages, averages, linear equations, temperature conversions, or any
+   of ~30 anchored one-step word-problem templates (discount, tip/tax/GST,
+   percent change, simple interest, speed-distance-time, unit conversion,
+   proportional and recipe scaling, work rate, ratio split, age sums,
+   remaining stock, GCD/LCM, median, sequences, coin/die probability, basic
+   geometry, weekday arithmetic, transitive ordering) are solved exactly in
+   Python at zero token cost. Every template only fires when the whole
+   prompt provably matches; anything ambiguous flows to the LLM.
 2. **Two-stage router** (`agent/router.py`): a word-boundary lexical layer
    catches explicit and hidden-style signals ("summarize", "key takeaway",
    "tone of", "why does this fail"), and a semantic layer embeds the prompt
    with `all-MiniLM-L6-v2` and scores cosine similarity against offline seed
    prompts for the eight task categories.
-3. **Easy categories** (factual QA, sentiment, summarisation) can run on a
-   quantized Qwen2.5-1.5B GGUF bundled in the image via llama.cpp: zero
-   Fireworks tokens. Set `ENABLE_LOCAL_MODEL=0` to send them to Fireworks
-   instead (costs more tokens). NER is excluded from local routing: a
-   215-case eval (2026-07-10) measured it at 52% on the bundled model, which
-   consistently dropped entities on multi-entity sentences, versus ~100% for
-   the other three local categories, so NER always goes to Fireworks.
-4. **Hard categories** (math, logic, code debugging, code generation, NER) go
-   to Fireworks AI with per-category token budgets sized for reasoning models
-   (whose chain-of-thought bills as completion tokens) and a category-aware
+3. **Local-first categories** (factual QA, sentiment, summarisation, NER,
+   short code generation) run on a quantized Qwen2.5-1.5B GGUF bundled in
+   the image via llama.cpp: zero Fireworks tokens. Every local answer must
+   pass a deterministic validator (`agent/validate.py`) before it ships —
+   NER answers must contain every capitalized span and year from the source
+   and introduce none of their own; code must `ast.parse` and define the
+   requested names; sentiment must be exactly one label. Anything rejected
+   escalates to Fireworks. Set `ENABLE_LOCAL_MODEL=0` to skip local
+   inference entirely.
+4. **Fireworks categories** (math word problems beyond the solvers, logic,
+   code debugging, and everything escalated by validation) go to Fireworks
+   AI with per-category token budgets sized for reasoning models (whose
+   chain-of-thought bills as completion tokens) and a compact category-aware
    system prompt, using a model-preference order built from `ALLOWED_MODELS`
-   at runtime.
+   at runtime. Local accuracy measured too low to trust for debugging
+   (19/25) and logic (18/25), and neither has a deterministic validator, so
+   they never route local.
 5. **Reliability**: Fireworks calls run concurrently while local inference
    gets a serial lane; rate limits and transient 5xx/429 errors retry with
    exponential backoff honoring `Retry-After`; `results.json` is written
@@ -78,6 +85,8 @@ spaces requests for keys with tight quotas), `PREFERRED_FIREWORKS_MODEL`,
 |-- agent/
 |   |-- config.py           # runtime env parsing and validation
 |   |-- deterministic.py    # exact zero-token solvers (arithmetic, %, averages, linear equations, temperature)
+|   |-- word_problems.py    # anchored one-step word-problem templates (zero-token)
+|   |-- validate.py         # deterministic validation of local answers (escalate on failure)
 |   |-- fireworks.py        # Fireworks client: retry/backoff, usage, truncation retry
 |   |-- io.py               # /input and /output JSON helpers (atomic writes)
 |   |-- local_model.py      # llama.cpp GGUF wrapper with per-category prompts

@@ -32,23 +32,27 @@ class RouteTarget(str, Enum):
     DETERMINISTIC = "deterministic"
 
 
+# Local-first categories. NER and CODE are only safe here because every
+# local answer must pass agent/validate.py before it ships; failures escalate
+# to Fireworks. Measured on the 2026-07-12 probe (Qwen2.5-1.5B, 100 cases):
+# code_generation 25/25 accepted+correct, NER 12 accepted (all correct) /
+# 13 escalated, zero wrong answers accepted in either category.
 LOCAL_TASKS = {
     TaskKind.FACTUAL,
     TaskKind.SENTIMENT,
     TaskKind.SUMMARY,
+    TaskKind.NER,
+    TaskKind.CODE,
 }
 
-# NER measured at 52% accuracy on the bundled Qwen2.5-1.5B model (215-case
-# eval, 2026-07-10): it consistently drops one entity per multi-entity
-# sentence and, in a couple of cases, hallucinated an entity lifted from its
-# own system-prompt example. Factual/sentiment/summary all measured at or
-# near 100% on the same model, so only NER is excluded from local routing.
+# Local accuracy measured too low to trust even with validation (probe
+# 2026-07-12: debugging 19/25, logic 18/25 — and neither has a deterministic
+# validator that could catch a wrong explanation), and math word problems
+# that escape the deterministic solvers genuinely need reasoning.
 FIREWORKS_TASKS = {
     TaskKind.MATH,
     TaskKind.LOGIC,
     TaskKind.DEBUGGING,
-    TaskKind.CODE,
-    TaskKind.NER,
 }
 
 
@@ -212,6 +216,16 @@ class SemanticRouter:
         if kind is TaskKind.FACTUAL and _looks_current_or_high_risk(prompt):
             return RouteTarget.FIREWORKS
 
+        # Difficulty gates: the 1.5B model was only validated on short,
+        # single-deliverable prompts; anything bigger goes straight to
+        # Fireworks instead of wasting a slow local attempt.
+        if kind is TaskKind.CODE and (
+            len(prompt) > 400 or len(prompt.split()) > 60
+        ):
+            return RouteTarget.FIREWORKS
+        if kind is TaskKind.NER and len(prompt) > 600:
+            return RouteTarget.FIREWORKS
+
         if not self.settings.enable_local_model:
             return RouteTarget.FIREWORKS
 
@@ -286,14 +300,33 @@ def output_budget(kind: TaskKind, prompt: str, default_max_tokens: int) -> int:
     budgets = {
         TaskKind.SENTIMENT: 320,
         TaskKind.FACTUAL: 512 if _wants_explanation(prompt) else 448,
-        TaskKind.NER: 640,
+        # 640 measured too tight for reasoning models on NER escalations:
+        # finish_reason=length triggered the 3x truncation retry, double-
+        # billing the call (~528 tokens/case observed vs ~260 single-shot).
+        TaskKind.NER: 896,
         TaskKind.MATH: 1024,
         TaskKind.LOGIC: 1024,
-        TaskKind.SUMMARY: min(768, max(384, words // 2)),
+        TaskKind.SUMMARY: min(1024, max(512, words // 2)),
         TaskKind.DEBUGGING: 1536,
         TaskKind.CODE: 1536,
     }
     return max(16, min(default_max_tokens, budgets[kind]))
+
+
+def local_output_budget(kind: TaskKind, prompt: str, default_max_tokens: int) -> int:
+    # The local instruct model emits no chain-of-thought, so its budgets only
+    # need to fit the literal answer. These match the 2026-07-12 probe that
+    # validated local quality; summary keeps the shared budget because it was
+    # measured perfect under it.
+    budgets = {
+        TaskKind.SENTIMENT: 24,
+        TaskKind.FACTUAL: 96,
+        TaskKind.NER: 192,
+        TaskKind.CODE: 384,
+    }
+    if kind not in budgets:
+        return output_budget(kind, prompt, default_max_tokens)
+    return min(default_max_tokens, budgets[kind])
 
 
 def _wants_explanation(prompt: str) -> bool:

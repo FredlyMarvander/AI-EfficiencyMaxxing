@@ -1,0 +1,704 @@
+{
+ "results": [
+  {
+   "id": "ner-01",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 6.5,
+   "answer": "Named entities extracted from the sentence:\nAngela Merkel: Person\nEmmanuel Macron: Person\nBrussels: Location"
+  },
+  {
+   "id": "ner-02",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 1.3,
+   "answer": "Microsoft - Company\nGitHub - Company\n7.5 billion dollars - Amount\n2018 - Year"
+  },
+  {
+   "id": "ner-03",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 0.5,
+   "answer": "Amazon River: geographical feature\nBrazil: country\nPeru: country"
+  },
+  {
+   "id": "ner-04",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 0.5,
+   "answer": "Lionel Messi, Inter Miami, Paris Saint-Germain"
+  },
+  {
+   "id": "ner-05",
+   "category": "named_entity_recognition",
+   "ok": false,
+   "seconds": 0.3,
+   "answer": "Toyota: Company\nKentucky: Location"
+  },
+  {
+   "id": "ner-06",
+   "category": "named_entity_recognition",
+   "ok": false,
+   "seconds": 0.3,
+   "answer": "Marie Curie: Person"
+  },
+  {
+   "id": "ner-07",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 0.3,
+   "answer": "United Nations, New York, Kenya"
+  },
+  {
+   "id": "ner-08",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 0.3,
+   "answer": "Shakespeare, Hamlet, London"
+  },
+  {
+   "id": "ner-09",
+   "category": "named_entity_recognition",
+   "ok": false,
+   "seconds": 0.3,
+   "answer": "NASA (organization)"
+  },
+  {
+   "id": "ner-10",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 0.7,
+   "answer": "Cristiano Ronaldo: Person, Al Nassr: Organization, Saudi Arabia: Location"
+  },
+  {
+   "id": "ner-11",
+   "category": "named_entity_recognition",
+   "ok": false,
+   "seconds": 0.4,
+   "answer": "Eiffel Tower: Building, Paris: City"
+  },
+  {
+   "id": "ner-12",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 1.4,
+   "answer": "Sundar Pichai: person\nGoogle: organization\nnew research lab: location\nZurich: location"
+  },
+  {
+   "id": "ner-13",
+   "category": "named_entity_recognition",
+   "ok": false,
+   "seconds": 0.5,
+   "answer": "- Titanic: ship\n- North Atlantic: location\n- April: month"
+  },
+  {
+   "id": "ner-14",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 0.5,
+   "answer": "Neil Armstrong walked on the Moon in July 1969."
+  },
+  {
+   "id": "ner-15",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 0.8,
+   "answer": "Samsung: Company\nLG: Company\nCES: Event\nLas Vegas: Location"
+  },
+  {
+   "id": "ner-16",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 0.8,
+   "answer": "Pope Francis: Person\nPortugal: Location\nWorld Youth Day: Event\nLisbon: Location"
+  },
+  {
+   "id": "ner-17",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 0.4,
+   "answer": "Amazon: Entity, Arlington, Virginia: Location"
+  },
+  {
+   "id": "ner-18",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 0.8,
+   "answer": "Rafael Nadal: Person\nFrench Open: Event\nRoland Garros: Venue\nParis: Location"
+  },
+  {
+   "id": "ner-19",
+   "category": "named_entity_recognition",
+   "ok": false,
+   "seconds": 1.3,
+   "answer": "Berlin: City\nWall: Structure\nfell: Action\nNovember: Month\n1989: Year"
+  },
+  {
+   "id": "ner-20",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 0.4,
+   "answer": "Spotify: Stockholm\nApple: Cupertino"
+  },
+  {
+   "id": "ner-21",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 1.0,
+   "answer": "Named entities extracted from the sentence:\nDr. Jane Goodall: Person\nOxford University: Location\nTanzania: Location"
+  },
+  {
+   "id": "ner-22",
+   "category": "named_entity_recognition",
+   "ok": false,
+   "seconds": 0.2,
+   "answer": "World Bank, Argentina"
+  },
+  {
+   "id": "ner-23",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 1.0,
+   "answer": "- Leonardo da Vinci: Person\n- Mona Lisa: Artwork\n- Louvre: Museum\n- Paris: City"
+  },
+  {
+   "id": "ner-24",
+   "category": "named_entity_recognition",
+   "ok": false,
+   "seconds": 0.6,
+   "answer": "Boeing: Company\nAll Nippon Airways: Company"
+  },
+  {
+   "id": "ner-25",
+   "category": "named_entity_recognition",
+   "ok": true,
+   "seconds": 0.6,
+   "answer": "Greta Thunberg: Person\nEuropean Parliament: Organization\nStrasbourg: Location"
+  },
+  {
+   "id": "debug-01",
+   "category": "code_debugging",
+   "ok": true,
+   "seconds": 2.6,
+   "answer": "The bug in the function is that it checks if `n % 2 == 1`, which should be `n % 2 == 0` to return True for even numbers. Here's the corrected version:\n\n```python\ndef is_even(n):\n    return n % 2 == 0\n```"
+  },
+  {
+   "id": "debug-02",
+   "category": "code_debugging",
+   "ok": true,
+   "seconds": 3.3,
+   "answer": "The function is appending the same list to each call, which is not what you want. To fix this, you should pass a new list as an argument instead of using the default one. Here's the corrected version:\n\n```python\ndef append_item(item, items=None):\n    if items is None:\n        items = []\n    items.append(item)\n    return items\n```\n\nThis way, each call to `append_item` will create a new list and add the item to it."
+  },
+  {
+   "id": "debug-03",
+   "category": "code_debugging",
+   "ok": true,
+   "seconds": 4.3,
+   "answer": "The issue with the loop is that it will iterate past the end of the array when `i` equals `arr.length`. To fix this, you should change the condition to `i < arr.length` instead. Here's the corrected code:\n\n```javascript\nfor (var i = 0; i < arr.length; i++) {\n  console.log(arr[i]);\n}\n```\n\nThis ensures that the loop will only iterate through the array up to but not including its length."
+  },
+  {
+   "id": "debug-04",
+   "category": "code_debugging",
+   "ok": true,
+   "seconds": 4.5,
+   "answer": "The code raises a `ZeroDivisionError` when the list `numbers` is empty because `len(numbers)` will return 0, which causes division by zero. To fix this, you can add a check to ensure that the list is not empty before performing the calculation:\n\n```python\ndef mean(numbers):\n    if len(numbers) == 0:\n        raise ValueError(\"The list is empty\")\n    return sum(numbers) / len(numbers)\n```\n\nThis way, if `numbers` is empty, the function will raise a `ValueError` with an appropriate message."
+  },
+  {
+   "id": "debug-05",
+   "category": "code_debugging",
+   "ok": false,
+   "seconds": 3.7,
+   "answer": "The loop will never terminate because the condition `x > 0` is always true as long as `x` is greater than 0. To fix this, you can change the condition to `x != 0` so that the loop will continue until `x` becomes 0. Here's the corrected code:\n\n```python\nx = 10\nwhile x != 0:\n    print(x)\n```\n\nNow the loop will terminate when `x` reaches 0."
+  },
+  {
+   "id": "debug-06",
+   "category": "code_debugging",
+   "ok": true,
+   "seconds": 2.3,
+   "answer": "The code fails because the assignment operator (=) is used instead of the comparison operator (==). The correct syntax should be:\n\n```javascript\nif (x == 5) {\n  console.log('five');\n}\n```\n\nThis checks if `x` is equal to 5, and logs 'five' to the console if true."
+  },
+  {
+   "id": "debug-07",
+   "category": "code_debugging",
+   "ok": false,
+   "seconds": 1.2,
+   "answer": "The function is correct and should sum numbers from 1 to n inclusive. There's no need for a fix as the provided code already works as intended."
+  },
+  {
+   "id": "debug-08",
+   "category": "code_debugging",
+   "ok": true,
+   "seconds": 5.0,
+   "answer": "The Python code crashes because `input()` reads a string, not an integer. When you try to add 1 to the string 'age', it results in a TypeError: unsupported operand type(s) for +.\n\nTo fix this, you should convert the input to an integer before adding 1:\n\n```python\nage = int(input('Enter age: '))\nprint(age + 1)\n```\n\nThis will correctly interpret the input as an integer and perform the addition."
+  },
+  {
+   "id": "debug-09",
+   "category": "code_debugging",
+   "ok": true,
+   "seconds": 4.3,
+   "answer": "The provided function is intended to find the largest number in a list, but it incorrectly updates `m` with the smallest number found. To fix this, you should initialize `m` with the first element of the list and then compare each subsequent number to `m`. Here's the corrected version:\n\n```python\ndef largest(nums):\n    m = nums[0]\n    for n in nums:\n        if n > m:\n            m = n\n    return m\n```\n\nThis function will correctly identify the largest number in the given list."
+  },
+  {
+   "id": "debug-10",
+   "category": "code_debugging",
+   "ok": true,
+   "seconds": 2.9,
+   "answer": "The `nums.sort()` method returns `None` because it modifies the list in place and does not return a new sorted list. To get the sorted list, you should assign the result to a variable:\n\n```python\nnums = [3, 1, 2]\nresult = nums.sort()\n```\n\nThis will sort the list and store the sorted list back in `nums`."
+  },
+  {
+   "id": "debug-11",
+   "category": "code_debugging",
+   "ok": true,
+   "seconds": 3.9,
+   "answer": "The issue is that the `name` variable is not defined before the `if` statement. In Python, you need to assign a value to `name` before using it in an `if` statement. If `name` is not assigned a value, the `if` statement will raise a `NameError`. To fix this, you should assign a value to `name` before the `if` statement:\n\n```python\nname = 'alice'\nif name == 'alice':\n    print('hi')\n```"
+  },
+  {
+   "id": "debug-12",
+   "category": "code_debugging",
+   "ok": true,
+   "seconds": 3.7,
+   "answer": "The function `add` is defined to take two arguments, `a` and `b`, and return their sum. However, the function does not actually perform any computation; it simply returns the sum of the two arguments without adding them together. Therefore, when you call `print(add(2, 3))`, the function returns `5` (the sum of 2 and 3), but since there is no print statement inside the function to display this value, the output is `None`."
+  },
+  {
+   "id": "debug-13",
+   "category": "code_debugging",
+   "ok": true,
+   "seconds": 2.0,
+   "answer": "The function is trying to call factorial(n - 1) before it has been defined. This results in a recursion error because the base case (n = 0 or 1) is not reached, leading to an infinite loop of recursive calls."
+  },
+  {
+   "id": "debug-14",
+   "category": "code_debugging",
+   "ok": false,
+   "seconds": 8.4,
+   "answer": "The issue with your code is that `setTimeout` is called inside the loop, but it's not waiting for the previous `console.log(i)` to complete before starting the next iteration. This means that each `setTimeout` call runs immediately after the previous one finishes, causing the output to be 5 five times instead of 0 through 4.\n\nTo fix this, you should move the `setTimeout` calls outside the loop so they run sequentially:\n\n```javascript\nfor (var i = 0; i < 5; i++) {\n  console.log(i);\n}\n```\n\nThis will ensure that each `console.log(i)` runs in sequence, printing 0 through 4."
+  },
+  {
+   "id": "debug-15",
+   "category": "code_debugging",
+   "ok": true,
+   "seconds": 6.5,
+   "answer": "The Python check prints 'not equal' because the equality operator `==` in Python checks for exact numerical equality, including floating-point precision issues. In this case, `0.1 + 0.2` is not exactly equal to `0.3` due to floating-point arithmetic inaccuracies.\n\nTo compare floating-point numbers with a tolerance, you can use the `math.isclose()` function or define your own tolerance value. Here's how you can do it:\n\n```python\nimport math\n\nif abs(0.1 + 0.2 - 0.3) < 1e-9:\n    print('equal')\nelse:\n    print('not equal')\n```\n\nThis will correctly identify that `0.1 + 0.2` is not exactly equal to `0.3` within a very small tolerance."
+  },
+  {
+   "id": "debug-16",
+   "category": "code_debugging",
+   "ok": false,
+   "seconds": 3.0,
+   "answer": "To fix the KeyError issue, you can initialize an empty dictionary before iterating over the words. Here's how you can do it:\n\n```python\ncounts = {}\nfor word in words:\n    counts[word] += 1\n```\n\nThis ensures that each new word encountered is added to the dictionary with a default value of 0, preventing KeyError from occurring."
+  },
+  {
+   "id": "debug-17",
+   "category": "code_debugging",
+   "ok": false,
+   "seconds": 6.4,
+   "answer": "The code raises an IndexError because `a[i + 1]` is out of bounds when `i` reaches the last index of the list `a`. In Python, lists are zero-indexed, meaning the first element is at index 0. When `i` is equal to the length of the list minus one, `i + 1` becomes the length of the list, which is an invalid index.\n\nTo fix this, you should check if `i + 1` is within the bounds of the list before accessing it:\n\n```python\nfor i in range(len(a)):\n    if i + 1 < len(a):\n        print(a[i + 1])\n```\n\nThis ensures that you only attempt to access elements that are actually present in the list."
+  },
+  {
+   "id": "debug-18",
+   "category": "code_debugging",
+   "ok": true,
+   "seconds": 1.4,
+   "answer": "The query is almost correct, but it lacks the `FROM` clause. Here's the corrected version:\n\n```sql\nSELECT * FROM users WHERE name = 'Alice';\n```"
+  },
+  {
+   "id": "debug-19",
+   "category": "code_debugging",
+   "ok": true,
+   "seconds": 4.7,
+   "answer": "The issue with your code is that you are returning the result inside the loop, which means the function will return the last number in the list immediately after it starts iterating. To fix this, you should move the `return` statement outside the loop so that the function returns the total sum once all numbers have been processed. Here's the corrected version:\n\n```python\ndef total(nums):\n    result = 0\n    for n in nums:\n        result += n\n    return result\n```\n\nThis way, the function will correctly sum all the numbers in the list and return the total sum."
+  },
+  {
+   "id": "debug-20",
+   "category": "code_debugging",
+   "ok": true,
+   "seconds": 3.5,
+   "answer": "The provided function is correct for converting Fahrenheit to Celsius. There's no need for fixing it as the formula is accurate. However, if you want to ensure it works correctly, here's the function with a slight adjustment:\n\n```python\ndef to_celsius(f):\n    return (f - 32) * 5 / 9\n```\n\nThis version uses parentheses to clarify the order of operations, making the code slightly more readable."
+  },
+  {
+   "id": "debug-21",
+   "category": "code_debugging",
+   "ok": true,
+   "seconds": 1.3,
+   "answer": "The code you provided attempts to change the first character of a string, but strings in Python are immutable. Therefore, attempting to assign a new value to an index of a string will raise a TypeError."
+  },
+  {
+   "id": "debug-22",
+   "category": "code_debugging",
+   "ok": true,
+   "seconds": 0.8,
+   "answer": "The correct comparison should be '0' === 0, which evaluates to false."
+  },
+  {
+   "id": "debug-23",
+   "category": "code_debugging",
+   "ok": true,
+   "seconds": 3.9,
+   "answer": "The loop is skipping elements because `items.remove(item)` removes the item from the list in-place, which means it modifies the list while iterating over it. This can cause unexpected behavior if you're not careful. To avoid this, you should create a copy of the list before removing items:\n\n```python\nfor item in items:\n    if item < 0:\n        items_copy = items.copy()\n        items.remove(item)\n```\n\nThis way, you're working with a copy of the list and can safely remove elements without affecting the original list."
+  },
+  {
+   "id": "debug-24",
+   "category": "code_debugging",
+   "ok": true,
+   "seconds": 3.6,
+   "answer": "The function you provided is intended to count the number of vowels in a string, but it doesn't handle uppercase letters correctly. To fix this, you can convert all characters to lowercase before checking if they are vowels. Here's the corrected version:\n\n```python\ndef count_vowels(s):\n    return sum(1 for c in s.lower() if c in 'aeiou')\n```\n\nThis modification ensures that both uppercase and lowercase letters are treated equally when counting vowels."
+  },
+  {
+   "id": "debug-25",
+   "category": "code_debugging",
+   "ok": false,
+   "seconds": 2.2,
+   "answer": "The issue is that `data` is not defined before you try to print it. You should define `data` as a variable before using it in the print statement. For example:\n\n```python\nwith open('data.txt') as f:\n    data = f.read()\nprint(data)\n```"
+  },
+  {
+   "id": "logic-01",
+   "category": "logical_reasoning",
+   "ok": true,
+   "seconds": 0.2,
+   "answer": "Yes."
+  },
+  {
+   "id": "logic-02",
+   "category": "logical_reasoning",
+   "ok": false,
+   "seconds": 0.7,
+   "answer": "Yes, the speaker can be either a knight or a knave."
+  },
+  {
+   "id": "logic-03",
+   "category": "logical_reasoning",
+   "ok": false,
+   "seconds": 0.2,
+   "answer": "Yes."
+  },
+  {
+   "id": "logic-04",
+   "category": "logical_reasoning",
+   "ok": true,
+   "seconds": 2.0,
+   "answer": "Invalid. The argument is not logically valid because the conclusion does not necessarily follow from the premises. While it's true that some birds cannot fly, this doesn't imply that all birds (including penguins) cannot fly. Penguins are a specific type of bird that can fly."
+  },
+  {
+   "id": "logic-05",
+   "category": "logical_reasoning",
+   "ok": true,
+   "seconds": 0.6,
+   "answer": "Carol"
+  },
+  {
+   "id": "logic-06",
+   "category": "logical_reasoning",
+   "ok": true,
+   "seconds": 0.4,
+   "answer": "Rex is not a dog."
+  },
+  {
+   "id": "logic-07",
+   "category": "logical_reasoning",
+   "ok": false,
+   "seconds": 0.2,
+   "answer": "Valid."
+  },
+  {
+   "id": "logic-08",
+   "category": "logical_reasoning",
+   "ok": true,
+   "seconds": 0.5,
+   "answer": "A is a knave and B is a knight."
+  },
+  {
+   "id": "logic-09",
+   "category": "logical_reasoning",
+   "ok": false,
+   "seconds": 0.2,
+   "answer": "Tom"
+  },
+  {
+   "id": "logic-10",
+   "category": "logical_reasoning",
+   "ok": false,
+   "seconds": 0.7,
+   "answer": "If today is Wednesday, in exactly 100 days it will be a Sunday."
+  },
+  {
+   "id": "logic-11",
+   "category": "logical_reasoning",
+   "ok": true,
+   "seconds": 1.2,
+   "answer": "The contrapositive of 'If it rains, then the ground is wet' is 'If the ground is not wet, then it did not rain.'"
+  },
+  {
+   "id": "logic-12",
+   "category": "logical_reasoning",
+   "ok": true,
+   "seconds": 1.3,
+   "answer": "Yes. If every student who studies passes the exam, and Maria passed the exam, then it is likely that Maria studied. However, this is not guaranteed because there could be other factors at play."
+  },
+  {
+   "id": "logic-13",
+   "category": "logical_reasoning",
+   "ok": false,
+   "seconds": 0.4,
+   "answer": "Town A is east of town C."
+  },
+  {
+   "id": "logic-14",
+   "category": "logical_reasoning",
+   "ok": true,
+   "seconds": 0.6,
+   "answer": "Yes."
+  },
+  {
+   "id": "logic-15",
+   "category": "logical_reasoning",
+   "ok": true,
+   "seconds": 0.2,
+   "answer": "No."
+  },
+  {
+   "id": "logic-16",
+   "category": "logical_reasoning",
+   "ok": true,
+   "seconds": 0.4,
+   "answer": "Rex is one of Anna's cats."
+  },
+  {
+   "id": "logic-17",
+   "category": "logical_reasoning",
+   "ok": true,
+   "seconds": 0.2,
+   "answer": "No."
+  },
+  {
+   "id": "logic-18",
+   "category": "logical_reasoning",
+   "ok": true,
+   "seconds": 0.5,
+   "answer": "The meeting is scheduled on Tuesday."
+  },
+  {
+   "id": "logic-19",
+   "category": "logical_reasoning",
+   "ok": true,
+   "seconds": 0.2,
+   "answer": "No."
+  },
+  {
+   "id": "logic-20",
+   "category": "logical_reasoning",
+   "ok": true,
+   "seconds": 0.3,
+   "answer": "Yes."
+  },
+  {
+   "id": "logic-21",
+   "category": "logical_reasoning",
+   "ok": true,
+   "seconds": 2.1,
+   "answer": "A can determine that A is a knight. If A were a knave, then A would be lying when saying \"I am a knight.\" Since A is lying, the statement \"I am a knight\" must be false, which means A is not a knight. Therefore, A must be a knight."
+  },
+  {
+   "id": "logic-22",
+   "category": "logical_reasoning",
+   "ok": true,
+   "seconds": 0.6,
+   "answer": "Ann likes tea the most, coffee second, and juice least."
+  },
+  {
+   "id": "logic-23",
+   "category": "logical_reasoning",
+   "ok": true,
+   "seconds": 0.3,
+   "answer": "A square has four sides."
+  },
+  {
+   "id": "logic-24",
+   "category": "logical_reasoning",
+   "ok": true,
+   "seconds": 0.2,
+   "answer": "Yes."
+  },
+  {
+   "id": "logic-25",
+   "category": "logical_reasoning",
+   "ok": false,
+   "seconds": 1.4,
+   "answer": "The argument is valid. If all fish swim and dolphins swim, then it logically follows that dolphins are fish."
+  },
+  {
+   "id": "code-01",
+   "category": "code_generation",
+   "ok": true,
+   "seconds": 1.6,
+   "answer": "```python\ndef is_palindrome(s):\n    \"\"\"\n    Returns True if the string s reads the same forwards and backwards, ignoring case.\n    \"\"\"\n    return s.lower() == s.lower()[::-1]\n```"
+  },
+  {
+   "id": "code-02",
+   "category": "code_generation",
+   "ok": true,
+   "seconds": 7.2,
+   "answer": "```python\ndef fizzbuzz(n):\n    result = []\n    for i in range(1, n + 1):\n        if i % 3 == 0 and i % 5 == 0:\n            result.append('FizzBuzz')\n        elif i % 3 == 0:\n            result.append('Fizz')\n        elif i % 5 == 0:\n            result.append('Buzz')\n        else:\n            result.append(str(i))\n    return result\n```"
+  },
+  {
+   "id": "code-03",
+   "category": "code_generation",
+   "ok": true,
+   "seconds": 1.0,
+   "answer": "```sql\nSELECT name, email\nFROM users\nWHERE age > 30;\n```"
+  },
+  {
+   "id": "code-04",
+   "category": "code_generation",
+   "ok": true,
+   "seconds": 1.1,
+   "answer": "```javascript\nfunction sumArray(arr) {\n    return arr.reduce((acc, curr) => acc + curr, 0);\n}\n```"
+  },
+  {
+   "id": "code-05",
+   "category": "code_generation",
+   "ok": true,
+   "seconds": 1.5,
+   "answer": "```python\ndef factorial(n):\n    if n == 0:\n        return 1\n    else:\n        return n * factorial(n - 1)\n```"
+  },
+  {
+   "id": "code-06",
+   "category": "code_generation",
+   "ok": true,
+   "seconds": 0.7,
+   "answer": "```python\ndef reverse_words(s):\n    return ' '.join(reversed(s.split()))\n```"
+  },
+  {
+   "id": "code-07",
+   "category": "code_generation",
+   "ok": true,
+   "seconds": 2.4,
+   "answer": "```python\ndef two_sum(nums, target):\n    num_dict = {}\n    for i, num in enumerate(nums):\n        complement = target - num\n        if complement in num_dict:\n            return [num_dict[complement], i]\n        num_dict[num] = i\n    return []\n```"
+  },
+  {
+   "id": "code-08",
+   "category": "code_generation",
+   "ok": true,
+   "seconds": 0.8,
+   "answer": "```javascript\nfunction isEven(n) {\n    return n % 2 === 0;\n}\n```"
+  },
+  {
+   "id": "code-09",
+   "category": "code_generation",
+   "ok": true,
+   "seconds": 0.8,
+   "answer": "```sql\nSELECT category, COUNT(*) as product_count\nFROM products\nGROUP BY category;\n```"
+  },
+  {
+   "id": "code-10",
+   "category": "code_generation",
+   "ok": true,
+   "seconds": 3.2,
+   "answer": "```python\nclass Stack:\n    def __init__(self):\n        self.items = []\n\n    def push(self, item):\n        self.items.append(item)\n\n    def pop(self):\n        if not self.is_empty():\n            return self.items.pop()\n        else:\n            raise IndexError(\"pop from empty stack\")\n\n    def is_empty(self):\n        return len(self.items) == 0\n```"
+  },
+  {
+   "id": "code-11",
+   "category": "code_generation",
+   "ok": true,
+   "seconds": 2.5,
+   "answer": "```python\ndef fibonacci(n):\n    if n == 1 or n == 2:\n        return 1\n    else:\n        a, b = 1, 1\n        for _ in range(3, n + 1):\n            a, b = b, a + b\n        return b\n```"
+  },
+  {
+   "id": "code-12",
+   "category": "code_generation",
+   "ok": true,
+   "seconds": 5.2,
+   "answer": "```python\ndef celsius_to_fahrenheit(c):\n    \"\"\"\n    Converts a temperature from Celsius to Fahrenheit.\n    \n    Parameters:\n    c (float): Temperature in Celsius\n    \n    Returns:\n    float: Temperature in Fahrenheit\n    \"\"\"\n    f = (c * 9/5) + 32\n    return f\n\n# Example usage:\nprint(celsius_to_fahrenheit(0))  # Output: 32.0\nprint(celsius_to_fahrenheit(100))  # Output: 212.0\n```"
+  },
+  {
+   "id": "code-13",
+   "category": "code_generation",
+   "ok": true,
+   "seconds": 4.4,
+   "answer": "```python\ndef count_vowels(s):\n    \"\"\"\n    Counts the vowels in the string s, case-insensitively.\n    \n    Parameters:\n    s (str): The input string.\n    \n    Returns:\n    int: The number of vowels in the string.\n    \"\"\"\n    vowels = \"aeiouAEIOU\"\n    count = 0\n    for char in s:\n        if char in vowels:\n            count += 1\n    return count\n\n# Example usage\nprint(count_vowels(\"Hello World\"))  # Output: 3\n```"
+  },
+  {
+   "id": "code-14",
+   "category": "code_generation",
+   "ok": true,
+   "seconds": 0.8,
+   "answer": "```javascript\nfunction doubleAll(numbers) {\n    return numbers.map(number => number * 2);\n}\n```"
+  },
+  {
+   "id": "code-15",
+   "category": "code_generation",
+   "ok": true,
+   "seconds": 1.7,
+   "answer": "```python\ndef count_lines(path):\n    \"\"\"\n    Returns the number of lines in the text file at the given path.\n    \"\"\"\n    with open(path, 'r') as file:\n        return sum(1 for line in file)\n```"
+  },
+  {
+   "id": "code-16",
+   "category": "code_generation",
+   "ok": true,
+   "seconds": 4.7,
+   "answer": "```python\nimport re\n\ndef is_valid_email(s):\n    \"\"\"\n    Checks if the given string s looks like a valid email address using regular expressions.\n    \n    Args:\n    s (str): The string to check.\n    \n    Returns:\n    bool: True if s is a valid email, False otherwise.\n    \"\"\"\n    regex = r\"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$\"\n    return bool(re.match(regex, s))\n\n# Example usage\nprint(is_valid_email(\"example@example.com\"))  # True\nprint(is_valid_email(\"invalid-email\"))        # False\n```"
+  },
+  {
+   "id": "code-17",
+   "category": "code_generation",
+   "ok": true,
+   "seconds": 2.2,
+   "answer": "```python\ndef flatten(nested):\n    flat_list = []\n    for item in nested:\n        if isinstance(item, list):\n            flat_list.extend(flatten(item))\n        else:\n            flat_list.append(item)\n    return flat_list\n```"
+  },
+  {
+   "id": "code-18",
+   "category": "code_generation",
+   "ok": true,
+   "seconds": 1.1,
+   "answer": "```python\nfor i in range(1, 101):\n    print(i)\n```"
+  },
+  {
+   "id": "code-19",
+   "category": "code_generation",
+   "ok": true,
+   "seconds": 0.4,
+   "answer": "def square(x):\n    return x * x"
+  },
+  {
+   "id": "code-20",
+   "category": "code_generation",
+   "ok": true,
+   "seconds": 2.6,
+   "answer": "```python\ndef word_count(text):\n    from collections import defaultdict\n    words = text.split()\n    count = defaultdict(int)\n    for word in words:\n        count[word] += 1\n    return dict(count)\n\n# Example usage:\ntext = \"hello world hello\"\nprint(word_count(text))  # Output: {'hello': 2, 'world': 1}\n```"
+  },
+  {
+   "id": "code-21",
+   "category": "code_generation",
+   "ok": true,
+   "seconds": 0.7,
+   "answer": "```sql\nSELECT *\nFROM employees\nORDER BY salary DESC\nLIMIT 5;\n```"
+  },
+  {
+   "id": "code-22",
+   "category": "code_generation",
+   "ok": true,
+   "seconds": 0.7,
+   "answer": "```javascript\nfunction reverseString(s) {\n    return s.split('').reverse().join('');\n}\n```"
+  },
+  {
+   "id": "code-23",
+   "category": "code_generation",
+   "ok": true,
+   "seconds": 3.7,
+   "answer": "```python\ndef binary_search(arr, target):\n    left, right = 0, len(arr) - 1\n    \n    while left <= right:\n        mid = (left + right) // 2\n        \n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            left = mid + 1\n        else:\n            right = mid - 1\n            \n    return -1\n```"
+  },
+  {
+   "id": "code-24",
+   "category": "code_generation",
+   "ok": true,
+   "seconds": 3.8,
+   "answer": "```python\ndef remove_duplicates(lst):\n    \"\"\"\n    Removes duplicate elements from a list while preserving the original order.\n    \n    Args:\n    lst (list): The input list with possible duplicates.\n    \n    Returns:\n    list: A new list with duplicates removed and original order preserved.\n    \"\"\"\n    seen = set()\n    no_duplicates = []\n    for item in lst:\n        if item not in seen:\n            seen.add(item)\n            no_duplicates.append(item)\n    return no_duplicates\n```"
+  },
+  {
+   "id": "code-25",
+   "category": "code_generation",
+   "ok": true,
+   "seconds": 2.0,
+   "answer": "```python\ndef is_prime(n):\n    if n <= 1:\n        return False\n    for i in range(2, int(n**0.5) + 1):\n        if n % i == 0:\n            return False\n    return True\n```"
+  }
+ ]
+}

@@ -13,6 +13,8 @@ import ast
 import operator
 import re
 
+from agent.word_problems import try_solve_word_problem
+
 
 # Filler that may surround the actual expression in an arithmetic prompt.
 # The remainder after stripping these must be ONLY an expression; any other
@@ -113,7 +115,7 @@ def try_solve(prompt: str) -> str | None:
     """Return an exact answer string, or None when not provably safe."""
 
     text = prompt.strip()
-    if not text or len(text) > 300:
+    if not text or len(text) > 400:
         return None
 
     for solver in (
@@ -122,6 +124,7 @@ def try_solve(prompt: str) -> str | None:
         _solve_temperature,
         _solve_linear_equation,
         _solve_arithmetic,
+        try_solve_word_problem,
     ):
         answer = solver(text)
         if answer is not None:

@@ -6,43 +6,29 @@ from agent.router import TaskKind
 
 
 # Every system-prompt token is billed on each Fireworks call, so keep these
-# short and avoid wording that invites long chain-of-thought in the output.
+# minimal: answer-only phrasing, no step-by-step invitations.
 SYSTEM_PROMPTS: dict[TaskKind, str] = {
-    TaskKind.FACTUAL: (
-        "Answer the question directly and concisely. One short sentence "
-        "unless the prompt asks for more."
-    ),
+    TaskKind.FACTUAL: "Answer directly in one short sentence.",
     TaskKind.MATH: (
-        "Solve carefully. Show only the essential steps, then give the final "
-        "answer clearly at the end, with units if applicable."
+        "Solve. End with only the final answer, with units if applicable."
     ),
     TaskKind.SENTIMENT: (
-        "Classify the sentiment. Use the label set the prompt asks for; if "
-        "none is given, answer exactly one of: Positive, Negative, or "
-        "Neutral. Add a brief reason only if requested."
+        "Reply with one label: Positive, Negative, or Neutral — or the label "
+        "set the prompt requests. No reason unless asked."
     ),
     TaskKind.SUMMARY: (
-        "Summarize faithfully. Obey the requested length and format exactly. "
-        "No preamble, no added information."
+        "Summarize faithfully. Match the requested length and format. No "
+        "preamble."
     ),
     TaskKind.NER: (
-        "Extract ALL named entities (people, organizations, locations, "
-        "dates, other proper nouns). Follow the requested labels and format "
-        "exactly; if none is given, list each entity with its type. Do not "
-        "invent entities."
+        "Extract every named entity (people, organizations, locations, "
+        "dates). Use the requested format. Do not invent entities."
     ),
     TaskKind.DEBUGGING: (
-        "Identify the bug and provide the corrected code or minimal fix. "
-        "Be concise."
+        "State the bug and give the minimal corrected code. Be brief."
     ),
-    TaskKind.LOGIC: (
-        "Reason through all constraints, then state the final conclusion "
-        "clearly and briefly."
-    ),
-    TaskKind.CODE: (
-        "Return correct, runnable code that does exactly what is asked. "
-        "Explanation only if requested."
-    ),
+    TaskKind.LOGIC: "State the conclusion briefly.",
+    TaskKind.CODE: "Return correct runnable code only, unless asked to explain.",
 }
 
 DEFAULT_SYSTEM_PROMPT = "Answer accurately and concisely."
