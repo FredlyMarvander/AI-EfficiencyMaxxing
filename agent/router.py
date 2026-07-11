@@ -318,7 +318,12 @@ def ordered_models(
         ]
 
     first = _select_model(allowed_models, kind)
-    return [first] + [model for model in allowed_models if model != first]
+    rest = [model for model in allowed_models if model != first]
+    # Reasoning-family models bill their chain-of-thought as completion
+    # tokens (5-20x an instruct model for the same answer), so they are the
+    # fallback of last resort, never an early alternative.
+    rest.sort(key=_looks_expensive)
+    return [first] + rest
 
 
 def _build_encoder(model_path: str):
@@ -333,16 +338,27 @@ def _build_encoder(model_path: str):
         return _HashingEncoder()
 
 
+def _looks_expensive(model: str) -> bool:
+    lowered = model.lower()
+    return any(
+        marker in lowered for marker in ("minimax", "reason", "think", "r1")
+    )
+
+
 def _select_model(allowed_models: list[str], kind: TaskKind) -> str:
+    # Needles must not collide with reasoning-family names: "mini" matched
+    # "minimax-m3" and silently routed NER to a chain-of-thought model that
+    # cost ~10x per answer. Instruct families (gemma/llama/qwen/kimi) answer
+    # the same questions in a fraction of the completion tokens.
     preferences = {
-        TaskKind.CODE: ("code", "coder", "qwen", "deepseek", "kimi", "gemma"),
-        TaskKind.DEBUGGING: ("code", "coder", "qwen", "deepseek", "kimi", "gemma"),
-        TaskKind.MATH: ("math", "reason", "qwen", "deepseek", "kimi", "gemma"),
-        TaskKind.LOGIC: ("reason", "qwen", "deepseek", "kimi", "gemma"),
-        TaskKind.FACTUAL: ("gemma", "llama", "qwen", "mini", "small"),
-        TaskKind.SENTIMENT: ("mini", "small", "gemma", "llama", "qwen"),
-        TaskKind.NER: ("mini", "small", "gemma", "llama", "qwen"),
-        TaskKind.SUMMARY: ("mini", "small", "gemma", "llama", "qwen"),
+        TaskKind.CODE: ("code", "coder", "kimi", "qwen", "deepseek", "gemma"),
+        TaskKind.DEBUGGING: ("code", "coder", "kimi", "qwen", "deepseek", "gemma"),
+        TaskKind.MATH: ("kimi", "code", "qwen", "deepseek", "gemma"),
+        TaskKind.LOGIC: ("kimi", "code", "qwen", "deepseek", "gemma"),
+        TaskKind.FACTUAL: ("gemma", "llama", "qwen", "kimi"),
+        TaskKind.SENTIMENT: ("gemma", "llama", "qwen", "kimi"),
+        TaskKind.NER: ("gemma", "llama", "qwen", "kimi"),
+        TaskKind.SUMMARY: ("gemma", "llama", "qwen", "kimi"),
     }
     # Needles are in priority order, so scan needle-first: otherwise the first
     # allowed model matching any needle wins and the preference order is moot.
