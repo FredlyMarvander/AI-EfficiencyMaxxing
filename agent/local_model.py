@@ -17,8 +17,9 @@ class LocalModelError(RuntimeError):
 
 SYSTEM_PROMPTS: dict[TaskKind, str] = {
     TaskKind.FACTUAL: (
-        "Answer the factual question directly and briefly. If the answer is a "
-        "name, date, place, or number, return only that plus essential context."
+        "Answer the factual question directly. If it asks for an explanation, "
+        "explain concisely but completely, covering every part of the "
+        "question. Otherwise return just the answer plus essential context."
     ),
     TaskKind.SENTIMENT: (
         "Classify sentiment. Return only one label, using the label set the "

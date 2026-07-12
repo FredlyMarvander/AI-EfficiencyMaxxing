@@ -19,6 +19,11 @@ _STOPWORD_PREFIXES = {
     "mr", "mrs", "ms", "prof",
 }
 
+# Capitalized tokens that are almost never entities themselves; requiring
+# them in the answer would force pointless escalations ("a new AI research
+# lab" is not an entity, per the official T05 sample).
+_COMMON_NON_ENTITIES = {"ai", "it", "ceo", "cto", "cfo", "gdp"}
+
 # Capitalized words a well-formed NER answer may legitimately introduce:
 # entity-type labels and scaffolding, never entity names themselves.
 _NER_LABEL_WORDS = {
@@ -48,7 +53,7 @@ def validate_local_answer(kind: TaskKind, prompt: str, answer: str) -> bool:
     if kind is TaskKind.SUMMARY:
         return _validate_summary(prompt, answer)
     if kind is TaskKind.FACTUAL:
-        return _validate_factual(answer)
+        return _validate_factual(prompt, answer)
     if kind is TaskKind.CODE:
         return _validate_code(prompt, answer)
     return False  # unknown kind: never trust the local model blindly
@@ -125,6 +130,8 @@ def _validate_ner(prompt: str, answer: str) -> bool:
     # Possessives count as the bare name ("Google's" is covered by "Google").
     for entity in _capitalized_runs(source):
         needle = entity.lower()
+        if needle in _COMMON_NON_ENTITIES:
+            continue
         bare = re.sub(r"['’]s\b", "", needle)
         if needle not in normalized_answer and bare not in normalized_answer:
             return False
@@ -154,17 +161,48 @@ def _validate_summary(prompt: str, answer: str) -> bool:
         return False
 
     sentences_asked = re.search(
-        r"\bin (one|two|three|a single|1|2|3)(?:\s+or\s+(?:two|three|fewer))?\s+sentences?\b",
+        r"\bin (?:exactly\s+|precisely\s+|just\s+|only\s+)?"
+        r"(one|two|three|a single|1|2|3)(?:\s+or\s+(?:two|three|fewer))?\s+sentences?\b",
         lowered_prompt,
     )
+    strict = bool(re.search(r"\bexactly\b|\bprecisely\b", lowered_prompt))
     if sentences_asked:
         counts = {"one": 1, "a single": 1, "1": 1, "two": 2, "2": 2, "three": 3, "3": 3}
         allowed = counts[sentences_asked.group(1)]
         if lowered_prompt.count(" or two") or " or three" in lowered_prompt:
             allowed += 1
         sentences = len([s for s in re.split(r"[.!?]+", answer) if s.strip()])
+        # "exactly two sentences" is judged both ways: more OR fewer fails.
+        if strict and sentences != allowed:
+            return False
         if sentences > allowed + 1:
             return False
+
+    bullets_asked = re.search(
+        r"\b(?:exactly\s+|precisely\s+)?(one|two|three|four|five|[1-5])\s+bullet\s+points?\b",
+        lowered_prompt,
+    )
+    if bullets_asked:
+        counts = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+                  "1": 1, "2": 2, "3": 3, "4": 4, "5": 5}
+        wanted = counts[bullets_asked.group(1)]
+        bullet_lines = [
+            line for line in answer.splitlines()
+            if re.match(r"^\s*(?:[-*•]|\d+[.)])\s+", line)
+        ]
+        if len(bullet_lines) != wanted:
+            return False
+        per_bullet = re.search(
+            r"(?:no\s+longer\s+than|no\s+more\s+than|under|at\s+most|within|"
+            r"max(?:imum)?(?:\s+of)?)\s+(\d+)\s+words",
+            lowered_prompt,
+        )
+        if per_bullet:
+            cap = int(per_bullet.group(1))
+            for line in bullet_lines:
+                content = re.sub(r"^\s*(?:[-*•]|\d+[.)])\s+", "", line)
+                if len(content.split()) > cap:
+                    return False
 
     # A summary should be meaningfully shorter than its source.
     if words > max(120, len(prompt.split())):
@@ -172,10 +210,17 @@ def _validate_summary(prompt: str, answer: str) -> bool:
     return True
 
 
-def _validate_factual(answer: str) -> bool:
-    if len(answer) > 400:
-        return False
-    return True
+def _validate_factual(prompt: str, answer: str) -> bool:
+    # Explanation-style factual questions (the official samples all are)
+    # legitimately need multi-sentence answers.
+    wants_explanation = bool(
+        re.search(
+            r"\b(?:explain|describe|why|compare|discuss|difference|how)\b",
+            prompt.lower(),
+        )
+    )
+    limit = 900 if wants_explanation else 400
+    return len(answer) <= limit
 
 
 def _required_code_names(prompt: str) -> list[str]:

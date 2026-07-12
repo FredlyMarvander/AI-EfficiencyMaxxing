@@ -225,6 +225,14 @@ class SemanticRouter:
             return RouteTarget.FIREWORKS
         if kind is TaskKind.NER and len(prompt) > 600:
             return RouteTarget.FIREWORKS
+        # The official validation samples show reason-required sentiment
+        # tasks are deliberately mixed-signal and judged on whether the
+        # reason acknowledges both sides — quality no deterministic
+        # validator can check, so send them to Fireworks.
+        if kind is TaskKind.SENTIMENT and re.search(
+            r"\breasons?\b|\bexplain\b|\bwhy\b|\bjustif", prompt.lower()
+        ):
+            return RouteTarget.FIREWORKS
 
         if not self.settings.enable_local_model:
             return RouteTarget.FIREWORKS
@@ -320,7 +328,10 @@ def local_output_budget(kind: TaskKind, prompt: str, default_max_tokens: int) ->
     # measured perfect under it.
     budgets = {
         TaskKind.SENTIMENT: 24,
-        TaskKind.FACTUAL: 96,
+        # The official factual samples are explanation-style ("briefly
+        # explain why displays use RGB instead of RYB"); 96 tokens truncates
+        # mid-explanation and the truncation would pass factual validation.
+        TaskKind.FACTUAL: 320 if _wants_explanation(prompt) else 96,
         TaskKind.NER: 192,
         TaskKind.CODE: 384,
     }
