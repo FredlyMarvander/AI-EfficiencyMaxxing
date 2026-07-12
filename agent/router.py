@@ -210,6 +210,12 @@ class SemanticRouter:
         margin: float,
         lexical_kind: TaskKind | None,
     ) -> RouteTarget:
+        # 0-token play: every category tries the local model first; Fireworks
+        # only rescues answers that agent/validate.py rejects. Deterministic
+        # solvers still win before this point (exact and equally free).
+        if self.settings.force_all_local and self.settings.enable_local_model:
+            return RouteTarget.LOCAL
+
         if kind in FIREWORKS_TASKS:
             return RouteTarget.FIREWORKS
 
@@ -334,6 +340,12 @@ def local_output_budget(kind: TaskKind, prompt: str, default_max_tokens: int) ->
         TaskKind.FACTUAL: 320 if _wants_explanation(prompt) else 96,
         TaskKind.NER: 192,
         TaskKind.CODE: 384,
+        # FORCE_ALL_LOCAL kinds: kept tight because the serial local lane
+        # must finish 19 tasks inside the runtime budget; the local model
+        # emits no <think> blocks, so answers fit comfortably.
+        TaskKind.MATH: 384,
+        TaskKind.LOGIC: 320,
+        TaskKind.DEBUGGING: 640,
     }
     if kind not in budgets:
         return output_budget(kind, prompt, default_max_tokens)

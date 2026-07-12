@@ -56,6 +56,13 @@ def validate_local_answer(kind: TaskKind, prompt: str, answer: str) -> bool:
         return _validate_factual(prompt, answer)
     if kind is TaskKind.CODE:
         return _validate_code(prompt, answer)
+    if kind is TaskKind.MATH:
+        # Only reachable under FORCE_ALL_LOCAL. A math answer without a
+        # single number is certainly wrong; beyond that we cannot verify.
+        return bool(re.search(r"\d", answer)) and len(answer) <= 1500
+    if kind in (TaskKind.LOGIC, TaskKind.DEBUGGING):
+        # Only reachable under FORCE_ALL_LOCAL: sanity checks only.
+        return len(answer) <= 4000
     return False  # unknown kind: never trust the local model blindly
 
 

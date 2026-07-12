@@ -42,6 +42,9 @@ class Settings:
     local_model_path: str = DEFAULT_LOCAL_MODEL_PATH
     enable_local_model: bool = True
     enable_deterministic: bool = True
+    # Route every category to the local model (0-token play). Fireworks is
+    # then only the fallback when validation rejects a local answer.
+    force_all_local: bool = False
     fireworks_concurrency: int = DEFAULT_FIREWORKS_CONCURRENCY
     local_n_ctx: int = DEFAULT_LOCAL_N_CTX
     local_n_threads: int = 4
@@ -109,6 +112,7 @@ def load_settings() -> Settings:
         local_model_path=os.getenv("LOCAL_GGUF_PATH", DEFAULT_LOCAL_MODEL_PATH),
         enable_local_model=_env_bool("ENABLE_LOCAL_MODEL", True),
         enable_deterministic=_env_bool("ENABLE_DETERMINISTIC", True),
+        force_all_local=_env_bool("FORCE_ALL_LOCAL", False),
         fireworks_concurrency=_env_int(
             "FIREWORKS_CONCURRENCY",
             DEFAULT_FIREWORKS_CONCURRENCY,

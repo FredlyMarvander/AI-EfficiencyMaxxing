@@ -44,6 +44,19 @@ SYSTEM_PROMPTS: dict[TaskKind, str] = {
         "names. Output one fenced code block and nothing else unless an "
         "explanation is requested."
     ),
+    # The kinds below only run locally under FORCE_ALL_LOCAL (0-token play).
+    TaskKind.MATH: (
+        "Solve the problem showing brief essential steps, then state the "
+        "final numeric answer clearly on the last line."
+    ),
+    TaskKind.LOGIC: (
+        "Work through the constraints briefly, then state the final "
+        "conclusion clearly and directly."
+    ),
+    TaskKind.DEBUGGING: (
+        "Identify the bug and output the corrected code. Add one short "
+        "sentence naming the cause."
+    ),
 }
 
 DEFAULT_SYSTEM_PROMPT = (
