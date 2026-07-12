@@ -30,7 +30,7 @@ def main() -> None:
             print()
 
     here = os.path.dirname(__file__)
-    with open(os.path.join(here, "test_cases.json"), encoding="utf-8") as handle:
+    with open(os.path.join(here, "test_cases_v2.json"), encoding="utf-8") as handle:
         cases = json.load(handle)
 
     stats: dict[str, dict[str, float]] = {}

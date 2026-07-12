@@ -201,13 +201,14 @@ class FireworksClient:
             raise
 
         usage = _extract_usage(data, selected_model)
+        content, finish_reason = _extract_content(data)
+        usage["finish_reason"] = finish_reason
         with self._usage_lock:
             self.last_usage = usage
             self.total_usage["prompt_tokens"] += int(usage["prompt_tokens"])
             self.total_usage["completion_tokens"] += int(usage["completion_tokens"])
             self.total_usage["total_tokens"] += int(usage["total_tokens"])
 
-        content, finish_reason = _extract_content(data)
         answer = _clean_answer(_strip_reasoning(content))
 
         # A "length" stop means the answer was cut off mid-generation (for
@@ -223,7 +224,7 @@ class FireworksClient:
                     retry_limit,
                 )
                 try:
-                    return self.complete_with_usage(
+                    retry_answer, retry_usage = self.complete_with_usage(
                         prompt,
                         model=selected_model,
                         max_tokens=retry_limit,
@@ -231,6 +232,22 @@ class FireworksClient:
                         kind=kind,
                         _retry_on_truncation=False,
                     )
+                    # The retry's own usage doesn't include the discarded
+                    # first attempt; a per-task caller reading just the
+                    # returned usage would otherwise silently undercount the
+                    # true cost of this task by the truncated attempt's cost.
+                    combined_usage: dict[str, int | str] = {
+                        "model": retry_usage.get("model", selected_model),
+                        "prompt_tokens": int(usage["prompt_tokens"])
+                        + int(retry_usage.get("prompt_tokens", 0)),
+                        "completion_tokens": int(usage["completion_tokens"])
+                        + int(retry_usage.get("completion_tokens", 0)),
+                        "total_tokens": int(usage["total_tokens"])
+                        + int(retry_usage.get("total_tokens", 0)),
+                        "finish_reason": retry_usage.get("finish_reason", ""),
+                        "retried": True,
+                    }
+                    return retry_answer, combined_usage
                 except FireworksAPIError as exc:
                     if not answer:
                         raise
@@ -333,6 +350,7 @@ def _empty_usage() -> dict[str, int | str]:
         "prompt_tokens": 0,
         "completion_tokens": 0,
         "total_tokens": 0,
+        "finish_reason": "",
     }
 
 

@@ -69,7 +69,9 @@ class LocalGGUFModel:
     settings: Settings
     _llm: Any = field(default=None, init=False, repr=False)
 
-    def complete(self, prompt: str, kind: TaskKind, max_tokens: int) -> str:
+    def complete(
+        self, prompt: str, kind: TaskKind, max_tokens: int, temperature: float = 0.0
+    ) -> str:
         # Fail fast (and fall back to Fireworks) instead of letting llama.cpp
         # error out after a slow prefill; 128 covers template + system prompt.
         if estimate_tokens(prompt) + max_tokens + 128 > self.settings.local_n_ctx:
@@ -84,7 +86,7 @@ class LocalGGUFModel:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": prompt},
                 ],
-                temperature=0.0,
+                temperature=temperature,
                 top_p=0.9,
                 max_tokens=max_tokens,
                 repeat_penalty=1.05,

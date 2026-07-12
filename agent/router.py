@@ -32,27 +32,30 @@ class RouteTarget(str, Enum):
     DETERMINISTIC = "deterministic"
 
 
-# Local-first categories. NER and CODE are only safe here because every
-# local answer must pass agent/validate.py before it ships; failures escalate
-# to Fireworks. Measured on the 2026-07-12 probe (Qwen2.5-1.5B, 100 cases):
-# code_generation 25/25 accepted+correct, NER 12 accepted (all correct) /
-# 13 escalated, zero wrong answers accepted in either category.
+# Local-first categories. NER, CODE, and DEBUGGING are only safe here because
+# every local answer must pass agent/validate.py before it ships; failures
+# escalate to Fireworks. Measured on the 2026-07-12 probe (Qwen2.5-1.5B, 100
+# cases): code_generation 25/25 accepted+correct, NER 12 accepted (all
+# correct) / 13 escalated, zero wrong answers accepted in either category.
+# DEBUGGING now has its own validator (agent/validate.py:_validate_debugging
+# — parses the fixed code and requires a stated cause), so it no longer needs
+# a blanket escalation.
 LOCAL_TASKS = {
     TaskKind.FACTUAL,
     TaskKind.SENTIMENT,
     TaskKind.SUMMARY,
     TaskKind.NER,
     TaskKind.CODE,
+    TaskKind.DEBUGGING,
 }
 
 # Local accuracy measured too low to trust even with validation (probe
-# 2026-07-12: debugging 19/25, logic 18/25 — and neither has a deterministic
-# validator that could catch a wrong explanation), and math word problems
-# that escape the deterministic solvers genuinely need reasoning.
+# 2026-07-12: logic 18/25, with no deterministic validator that could catch a
+# wrong explanation), and math word problems that escape the deterministic
+# solvers genuinely need reasoning.
 FIREWORKS_TASKS = {
     TaskKind.MATH,
     TaskKind.LOGIC,
-    TaskKind.DEBUGGING,
 }
 
 
@@ -150,15 +153,20 @@ class SemanticRouter:
 
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
-        self.encoder = _build_encoder(settings.embedding_model_path)
-        self.encoder_is_fallback = isinstance(self.encoder, _HashingEncoder)
+        # Deferred: constructing a router must not pay for a MiniLM load (and
+        # the seed-prompt embedding pass that depends on it) when a run never
+        # needs semantic scoring, e.g. every prompt resolves via deterministic
+        # solvers or lexical patterns first. Populated on first use by
+        # `_semantic_kind`.
+        self.encoder = None
+        self.encoder_is_fallback = False
         self.seed_kinds: list[TaskKind] = []
-        seed_texts: list[str] = []
+        self._seed_texts: list[str] = []
         for kind, prompts in SEED_PROMPTS.items():
             for prompt in prompts:
                 self.seed_kinds.append(kind)
-                seed_texts.append(prompt)
-        self.seed_vectors = self.encoder.encode(seed_texts)
+                self._seed_texts.append(prompt)
+        self.seed_vectors: np.ndarray | None = None
 
     def route(self, prompt: str) -> RouteDecision:
         # Exact local solvers outrank everything: they only fire on prompts
@@ -177,19 +185,29 @@ class SemanticRouter:
                 )
 
         lexical_kind = _lexical_kind(prompt)
-        kind, confidence, margin = self._semantic_kind(prompt)
-        reason = "semantic"
-
-        if lexical_kind is not None:
+        if lexical_kind is None:
+            kind, confidence, margin = self._semantic_kind(prompt)
+            reason = "semantic"
+        else:
+            # A lexical hit overrides the semantic result outright, and
+            # `_target_for` only consults confidence/margin when
+            # lexical_kind is None, so running the MiniLM encoder here would
+            # be a full forward pass whose output is guaranteed to be
+            # discarded. Skip it.
             kind = lexical_kind
-            confidence = max(confidence, 0.99)
-            margin = max(margin, 0.25)
+            confidence = 0.99
+            margin = 0.25
             reason = "lexical+semantic"
 
         target = self._target_for(kind, prompt, confidence, margin, lexical_kind)
         return RouteDecision(kind, target, confidence, margin, reason)
 
     def _semantic_kind(self, prompt: str) -> tuple[TaskKind, float, float]:
+        if self.encoder is None:
+            self.encoder = _build_encoder(self.settings.embedding_model_path)
+            self.encoder_is_fallback = isinstance(self.encoder, _HashingEncoder)
+            self.seed_vectors = self.encoder.encode(self._seed_texts)
+
         query = self.encoder.encode([prompt])[0]
         similarities = self.seed_vectors @ query
         scores: dict[TaskKind, float] = {kind: -1.0 for kind in TaskKind}
@@ -317,7 +335,10 @@ def output_budget(kind: TaskKind, prompt: str, default_max_tokens: int) -> int:
         # 640 measured too tight for reasoning models on NER escalations:
         # finish_reason=length triggered the 3x truncation retry, double-
         # billing the call (~528 tokens/case observed vs ~260 single-shot).
-        TaskKind.NER: 896,
+        # 896 covers typical sources, but a dense one (many entities plus a
+        # requested type-label set) can still truncate and pay that retry
+        # tax, so scale up with a cheap density proxy instead of a flat cap.
+        TaskKind.NER: 896 + _ner_density_bonus(prompt),
         TaskKind.MATH: 1024,
         TaskKind.LOGIC: 1024,
         TaskKind.SUMMARY: min(1024, max(512, words // 2)),
@@ -359,6 +380,24 @@ def _wants_explanation(prompt: str) -> bool:
             prompt.lower(),
         )
     )
+
+
+# Rough proxy for how many entities an NER completion has to enumerate: count
+# capitalized-word runs in the source. All-caps tokens (requested type labels
+# like "PERSON", acronyms like "ACM") don't match, so a label-heavy prompt
+# doesn't inflate the count on its own. A small baseline is subtracted so
+# ordinary short prompts (a sentence or two, few named entities) keep the
+# original 896 budget essentially unchanged.
+_CAPITALIZED_WORD_PATTERN = re.compile(r"\b[A-Z][a-z]+\b")
+_NER_DENSITY_BASELINE = 6
+_NER_DENSITY_TOKENS_PER_ENTITY = 32
+_NER_DENSITY_MAX_BONUS = 768
+
+
+def _ner_density_bonus(prompt: str) -> int:
+    capitalized_words = len(_CAPITALIZED_WORD_PATTERN.findall(prompt))
+    extra = max(0, capitalized_words - _NER_DENSITY_BASELINE)
+    return min(_NER_DENSITY_MAX_BONUS, extra * _NER_DENSITY_TOKENS_PER_ENTITY)
 
 
 def ordered_models(
@@ -419,6 +458,19 @@ def _select_model(allowed_models: list[str], kind: TaskKind) -> str:
     # Needles are in priority order, so scan needle-first: otherwise the first
     # allowed model matching any needle wins and the preference order is moot.
     needles = preferences.get(kind, ())
+
+    # "kimi" is listed as an instruct-family needle above, but a reasoning
+    # variant (e.g. a future "...-thinking" deployment) would still match it
+    # by substring and get flagged by _looks_expensive. A flagged model must
+    # not win the *primary* slot just because it matches an earlier-priority
+    # needle -- ordered_models() only demotes expensive models within the
+    # fallback list, never reconsiders this first pick. So scan for a cheap
+    # match across all needles first, and only fall back to an expensive
+    # match if no needle has a cheap candidate in allowed_models at all.
+    for needle in needles:
+        for model in allowed_models:
+            if needle in model.lower() and not _looks_expensive(model):
+                return model
     for needle in needles:
         for model in allowed_models:
             if needle in model.lower():
@@ -660,20 +712,38 @@ def _looks_mathematical(text: str) -> bool:
     return bool(re.search(r"\d+\s*[-+*/^]\s*\d+", text))
 
 
+# Bare "current" is too broad a substring (matches "concurrent", "electric
+# current", "current assets"); it only signals a live-data need when a
+# temporal/market noun appears nearby, so it gets a proximity check instead
+# of an unconditional marker like the rest of this list.
+_CURRENT_WORD_PATTERN = re.compile(r"\bcurrently?\b")
+_CURRENT_TEMPORAL_NOUN_PATTERN = re.compile(r"\b(?:today|now|as of|stock|rate|price)\b")
+_CURRENT_PROXIMITY_WORDS = 10
+
+
 def _looks_current_or_high_risk(prompt: str) -> bool:
     text = prompt.lower()
-    return any(
-        marker in text
-        for marker in (
-            "latest",
-            "current",
-            "currently",
-            "today",
-            "yesterday",
-            "this year",
-            "as of",
-            "breaking news",
-            "stock price",
-            "exchange rate",
-        )
+    markers = (
+        "latest",
+        "today",
+        "yesterday",
+        "this year",
+        "as of",
+        "breaking news",
+        "stock price",
+        "exchange rate",
     )
+    if any(marker in text for marker in markers):
+        return True
+
+    words = text.split()
+    for match in _CURRENT_WORD_PATTERN.finditer(text):
+        preceding_words = len(text[: match.start()].split())
+        window = words[
+            max(0, preceding_words - _CURRENT_PROXIMITY_WORDS) : preceding_words
+            + _CURRENT_PROXIMITY_WORDS
+            + 1
+        ]
+        if _CURRENT_TEMPORAL_NOUN_PATTERN.search(" ".join(window)):
+            return True
+    return False

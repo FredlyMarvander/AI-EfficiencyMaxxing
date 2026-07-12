@@ -5,6 +5,7 @@ from __future__ import annotations
 import concurrent.futures
 import logging
 import os
+import re
 import sys
 import threading
 import time
@@ -22,6 +23,7 @@ from agent.router import (
     RouteDecision,
     RouteTarget,
     SemanticRouter,
+    TaskKind,
     local_output_budget,
     ordered_models,
     output_budget,
@@ -36,6 +38,145 @@ logging.basicConfig(
 
 TIME_LIMIT_ANSWER = "Unable to produce an answer within the time limit."
 API_ERROR_ANSWER = "Unable to produce an answer due to an API error."
+
+
+# Retried at a nonzero temperature (the first attempt is temperature=0.0,
+# fully deterministic) so a validation failure gets a genuinely different
+# second sample instead of regenerating the identical rejected answer.
+# Costs no Fireworks tokens -- only local CPU time -- so it's worth trying
+# before paying for an escalation.
+_LOCAL_RETRY_TEMPERATURE = 0.4
+
+_STRICT_FORMAT_PATTERN = re.compile(r"\bexactly\b|\bprecisely\b")
+
+
+def _retry_unlikely_to_help(kind: TaskKind, prompt: str) -> bool:
+    # A different sampling temperature rarely fixes a missed *exact* count
+    # requirement (e.g. "exactly two sentences", "exactly three bullet
+    # points") -- that's a structural mismatch a resample doesn't reliably
+    # correct, not a content-quality issue. Retrying anyway still escalates
+    # afterward, so it only adds local CPU time for near-zero expected
+    # benefit; skip straight to one attempt for these prompts.
+    return kind is TaskKind.SUMMARY and bool(
+        _STRICT_FORMAT_PATTERN.search(prompt.lower())
+    )
+
+
+def _local_attempt(
+    task: dict[str, str],
+    prompt: str,
+    settings: Settings,
+    local_model: LocalGGUFModel,
+    decision: RouteDecision,
+) -> dict[str, str] | None:
+    """Try the local model for a LOCAL-routed task, with one free retry.
+
+    Returns the finished result if either attempt validates, or None if the
+    caller should fall back to Fireworks.
+    """
+    task_id = task["task_id"]
+    local_budget = local_output_budget(
+        decision.kind, prompt, settings.default_max_tokens
+    )
+    temperatures = (
+        (0.0,)
+        if _retry_unlikely_to_help(decision.kind, prompt)
+        else (0.0, _LOCAL_RETRY_TEMPERATURE)
+    )
+    for attempt, temperature in enumerate(temperatures):
+        try:
+            answer = local_model.complete(
+                prompt, decision.kind, local_budget, temperature=temperature
+            )
+        except LocalModelError as exc:
+            # A load/context/inference failure won't be fixed by resampling.
+            logging.warning(
+                "local model failed for task %s; falling back to Fireworks: %s",
+                task_id,
+                exc,
+            )
+            return None
+
+        if validate_local_answer(decision.kind, prompt, answer):
+            return {"task_id": task_id, "answer": answer}
+
+        if attempt < len(temperatures) - 1:
+            logging.info(
+                "local answer for task %s failed validation; retrying locally "
+                "before escalating",
+                task_id,
+            )
+        else:
+            logging.info(
+                "local answer for task %s failed validation (attempt %s/%s); "
+                "escalating to Fireworks",
+                task_id,
+                attempt + 1,
+                len(temperatures),
+            )
+    return None
+
+
+def _fireworks_attempt(
+    task: dict[str, str],
+    prompt: str,
+    client: FireworksClient,
+    settings: Settings,
+    decision: RouteDecision,
+    timeout_seconds: float,
+) -> dict[str, str]:
+    task_id = task["task_id"]
+    max_tokens = output_budget(decision.kind, prompt, settings.default_max_tokens)
+
+    last_error: Exception | None = None
+    for model in ordered_models(
+        settings.allowed_models,
+        decision.kind,
+        preferred_model=settings.preferred_fireworks_model,
+    ):
+        if client.is_model_unavailable(model):
+            logging.info("skipping unavailable model %s for task %s", model, task_id)
+            continue
+        try:
+            answer, usage = client.complete_with_usage(
+                prompt=prompt,
+                model=model,
+                max_tokens=max_tokens,
+                timeout_seconds=timeout_seconds,
+                kind=decision.kind,
+            )
+            _log_token_usage(task_id, usage)
+            return {"task_id": task_id, "answer": answer}
+        except FireworksAPIError as exc:
+            last_error = exc
+            logging.warning("model %s failed for task %s: %s", model, task_id, exc)
+        except Exception as exc:
+            last_error = exc
+            logging.exception(
+                "unexpected failure from model %s for task %s", model, task_id
+            )
+
+    logging.error("task %s failed: %s", task_id, last_error)
+    return {"task_id": task_id, "answer": API_ERROR_ANSWER}
+
+
+def _answer_fireworks_lane(
+    task: dict[str, str],
+    client: FireworksClient,
+    settings: Settings,
+    decision: RouteDecision,
+    remaining_seconds: float | None,
+) -> dict[str, str]:
+    if decision.target is RouteTarget.DETERMINISTIC and decision.answer is not None:
+        # Locally computed exact answer: zero Fireworks tokens, no network.
+        return {"task_id": task["task_id"], "answer": decision.answer}
+
+    prompt = task["prompt"].strip()
+    timeout_seconds = min(
+        settings.request_timeout_seconds,
+        max(1.0, remaining_seconds or settings.request_timeout_seconds),
+    )
+    return _fireworks_attempt(task, prompt, client, settings, decision, timeout_seconds)
 
 
 def process_tasks(settings: Settings) -> list[dict[str, str]]:
@@ -61,56 +202,120 @@ def process_tasks(settings: Settings) -> list[dict[str, str]]:
 
     flush()
 
-    def run_one(index: int, task: dict[str, str], decision: RouteDecision | None) -> None:
-        remaining = deadline - time.monotonic()
-        if remaining <= 2:
-            logging.error("skipping task %s: time limit reached", task["task_id"])
-            return
-        logging.info("processing task %s (%s/%s)", task["task_id"], index + 1, len(tasks))
-        try:
-            result = answer_task(
-                task,
-                client,
-                settings,
-                router=router,
-                local_model=local_model,
-                remaining_seconds=remaining,
-                decision=decision,
-            )
-        except Exception:
-            logging.exception("unexpected failure while answering task %s", task["task_id"])
-            result = {"task_id": task["task_id"], "answer": API_ERROR_ANSWER}
+    def record(index: int, result: dict[str, str]) -> None:
         with results_lock:
             results[index] = result
         flush()
 
-    decisions: list[RouteDecision | None] = [
-        router.route(task["prompt"].strip()) if task["prompt"].strip() else None
-        for task in tasks
-    ]
-
     # Fireworks calls are network-bound and run concurrently; llama.cpp is not
-    # thread-safe, so local tasks get a single serial lane alongside them.
+    # thread-safe, so local tasks get a single serial lane alongside them. A
+    # local answer that fails validation escalates onto the *concurrent*
+    # Fireworks pool (submit_fireworks) rather than running inline on this
+    # single-worker lane, so a fallback call never has to wait behind
+    # whatever other local generation happens to be running.
     fireworks_pool = concurrent.futures.ThreadPoolExecutor(
         max_workers=settings.fireworks_concurrency, thread_name_prefix="fireworks"
     )
     local_pool = concurrent.futures.ThreadPoolExecutor(
         max_workers=1, thread_name_prefix="local"
     )
+    futures: list[concurrent.futures.Future] = []
+    futures_lock = threading.Lock()
 
-    futures = []
-    for index, (task, decision) in enumerate(zip(tasks, decisions)):
-        use_local_lane = (
-            local_model is not None
-            and decision is not None
-            and decision.target is RouteTarget.LOCAL
+    def submit_fireworks(
+        index: int, task: dict[str, str], decision: RouteDecision
+    ) -> None:
+        with futures_lock:
+            futures.append(
+                fireworks_pool.submit(run_fireworks, index, task, decision)
+            )
+
+    def run_fireworks(index: int, task: dict[str, str], decision: RouteDecision) -> None:
+        remaining = deadline - time.monotonic()
+        if remaining <= 2:
+            logging.error("skipping task %s: time limit reached", task["task_id"])
+            return
+        logging.info(
+            "processing task %s (%s/%s)", task["task_id"], index + 1, len(tasks)
         )
-        pool = local_pool if use_local_lane else fireworks_pool
-        futures.append(pool.submit(run_one, index, task, decision))
+        try:
+            result = _answer_fireworks_lane(
+                task, client, settings, decision, remaining
+            )
+        except Exception:
+            logging.exception(
+                "unexpected failure while answering task %s", task["task_id"]
+            )
+            result = {"task_id": task["task_id"], "answer": API_ERROR_ANSWER}
+        record(index, result)
 
-    _, pending = concurrent.futures.wait(
-        futures, timeout=max(1.0, deadline - time.monotonic())
-    )
+    def run_local(index: int, task: dict[str, str], decision: RouteDecision) -> None:
+        remaining = deadline - time.monotonic()
+        if remaining <= 2:
+            logging.error("skipping task %s: time limit reached", task["task_id"])
+            return
+        logging.info(
+            "processing task %s (%s/%s)", task["task_id"], index + 1, len(tasks)
+        )
+        try:
+            result = _local_attempt(
+                task, task["prompt"].strip(), settings, local_model, decision
+            )
+        except Exception:
+            logging.exception(
+                "unexpected failure while answering task %s", task["task_id"]
+            )
+            record(index, {"task_id": task["task_id"], "answer": API_ERROR_ANSWER})
+            return
+        if result is not None:
+            record(index, result)
+            return
+        submit_fireworks(index, task, decision)
+
+    decisions: list[RouteDecision | None] = [
+        router.route(task["prompt"].strip()) if task["prompt"].strip() else None
+        for task in tasks
+    ]
+
+    for index, (task, decision) in enumerate(zip(tasks, decisions)):
+        if decision is None:
+            record(index, {"task_id": task["task_id"], "answer": ""})
+            continue
+        logging.info(
+            "route task=%s kind=%s target=%s confidence=%.3f margin=%.3f reason=%s",
+            task["task_id"],
+            decision.kind.value,
+            decision.target.value,
+            decision.confidence,
+            decision.margin,
+            decision.reason,
+        )
+        use_local_lane = (
+            local_model is not None and decision.target is RouteTarget.LOCAL
+        )
+        if use_local_lane:
+            futures.append(local_pool.submit(run_local, index, task, decision))
+        else:
+            futures.append(fireworks_pool.submit(run_fireworks, index, task, decision))
+
+    # The local lane can enqueue new Fireworks futures while we wait (a
+    # validation-triggered escalation), so keep waiting on the latest
+    # snapshot until the future list stops growing or the deadline passes.
+    pending: list[concurrent.futures.Future] = []
+    while True:
+        with futures_lock:
+            snapshot = list(futures)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            pending = [f for f in snapshot if not f.done()]
+            break
+        _, still_pending = concurrent.futures.wait(snapshot, timeout=remaining)
+        with futures_lock:
+            grew = len(futures) > len(snapshot)
+        if not grew:
+            pending = list(still_pending)
+            break
+
     fireworks_pool.shutdown(wait=False, cancel_futures=True)
     local_pool.shutdown(wait=False, cancel_futures=True)
     flush()
@@ -147,6 +352,13 @@ def answer_task(
     remaining_seconds: float | None = None,
     decision: RouteDecision | None = None,
 ) -> dict[str, str]:
+    """Synchronous local-then-Fireworks-fallback entry point.
+
+    Kept for eval/eval.py and eval/run_modes.py, which call this directly and
+    expect one blocking call. process_tasks uses the split
+    _local_attempt/_answer_fireworks_lane helpers instead, so a validation
+    escalation can run on the concurrent Fireworks pool rather than inline.
+    """
     task_id = task["task_id"]
     prompt = task["prompt"].strip()
     if not prompt:
@@ -155,11 +367,6 @@ def answer_task(
     if decision is None:
         router = router or SemanticRouter(settings)
         decision = router.route(prompt)
-    max_tokens = output_budget(decision.kind, prompt, settings.default_max_tokens)
-    timeout_seconds = min(
-        settings.request_timeout_seconds,
-        max(1.0, remaining_seconds or settings.request_timeout_seconds),
-    )
 
     logging.info(
         "route task=%s kind=%s target=%s confidence=%.3f margin=%.3f reason=%s",
@@ -171,60 +378,13 @@ def answer_task(
         decision.reason,
     )
 
-    if decision.target is RouteTarget.DETERMINISTIC and decision.answer is not None:
-        # Locally computed exact answer: zero Fireworks tokens, no network.
-        return {"task_id": task_id, "answer": decision.answer}
-
     if decision.target is RouteTarget.LOCAL and settings.enable_local_model:
         model = local_model or LocalGGUFModel(settings)
-        local_budget = local_output_budget(
-            decision.kind, prompt, settings.default_max_tokens
-        )
-        try:
-            answer = model.complete(prompt, decision.kind, local_budget)
-            if validate_local_answer(decision.kind, prompt, answer):
-                return {"task_id": task_id, "answer": answer}
-            logging.info(
-                "local answer for task %s failed validation; escalating to Fireworks",
-                task_id,
-            )
-        except LocalModelError as exc:
-            logging.warning(
-                "local model failed for task %s; falling back to Fireworks: %s",
-                task_id,
-                exc,
-            )
+        result = _local_attempt(task, prompt, settings, model, decision)
+        if result is not None:
+            return result
 
-    last_error: Exception | None = None
-    for model in ordered_models(
-        settings.allowed_models,
-        decision.kind,
-        preferred_model=settings.preferred_fireworks_model,
-    ):
-        if client.is_model_unavailable(model):
-            logging.info("skipping unavailable model %s for task %s", model, task_id)
-            continue
-        try:
-            answer, usage = client.complete_with_usage(
-                prompt=prompt,
-                model=model,
-                max_tokens=max_tokens,
-                timeout_seconds=timeout_seconds,
-                kind=decision.kind,
-            )
-            _log_token_usage(task_id, usage)
-            return {"task_id": task_id, "answer": answer}
-        except FireworksAPIError as exc:
-            last_error = exc
-            logging.warning("model %s failed for task %s: %s", model, task_id, exc)
-        except Exception as exc:
-            last_error = exc
-            logging.exception(
-                "unexpected failure from model %s for task %s", model, task_id
-            )
-
-    logging.error("task %s failed: %s", task_id, last_error)
-    return {"task_id": task_id, "answer": API_ERROR_ANSWER}
+    return _answer_fireworks_lane(task, client, settings, decision, remaining_seconds)
 
 
 def run() -> int:
@@ -240,12 +400,15 @@ def _log_token_usage(task_id: str, usage: dict[str, int | str]) -> None:
         return
 
     logging.info(
-        "tokens task=%s model=%s prompt=%s completion=%s total=%s",
+        "tokens task=%s model=%s prompt=%s completion=%s total=%s "
+        "finish_reason=%s retried=%s",
         task_id,
         usage.get("model", ""),
         usage.get("prompt_tokens", 0),
         usage.get("completion_tokens", 0),
         usage.get("total_tokens", 0),
+        usage.get("finish_reason", ""),
+        bool(usage.get("retried", False)),
     )
 
 
