@@ -83,6 +83,8 @@ WORD_PROBLEM_CASES: list[tuple[str, str | None]] = [
     ("A train travels 180 kilometers in 2.5 hours. What is its average speed in km/h?", "72 km/h"),
     ("Driving at 60 miles per hour for 2.5 hours, how many miles do you cover?", "150 miles"),
     ("A train travels 180 kilometers in 2.5 hours. What is its average speed in mph?", None),
+    ("A runner runs 100 meters in 20 seconds. What is his average speed?", "5 m/s"),
+    ("A man walks 3000 meters in 2 hours. What is his average speed?", None),
     # proportional scaling
     ("If 5 pencils cost 2.50 dollars, how much do 8 pencils cost in dollars?", "4"),
     ("If 5 pencils cost 2.50 dollars, how much do 8 erasers cost?", None),

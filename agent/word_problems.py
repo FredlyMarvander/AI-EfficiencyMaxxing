@@ -311,13 +311,24 @@ def _speed_from_distance_time(text: str) -> str | None:
 
     if duration == 0:
         return None
-    hours = duration / {"hours": 1.0, "minutes": 60.0, "seconds": 3600.0}[time_unit]
-    speed = distance / hours
-    unit_label = {"kilometers": "km/h", "miles": "mph", "meters": "m/h"}[distance_unit]
+    if distance_unit == "meters":
+        # Meter-scale speeds are conventionally m/s; with any other time base
+        # the expected answer unit is ambiguous ("18000 m/h" would be marked
+        # wrong for a 100m sprint), so decline and let the LLM phrase it.
+        if time_unit != "seconds":
+            return None
+        speed = distance / duration
+        unit_label = "m/s"
+    else:
+        hours = duration / {"hours": 1.0, "minutes": 60.0, "seconds": 3600.0}[time_unit]
+        speed = distance / hours
+        unit_label = "km/h" if distance_unit == "kilometers" else "mph"
     if asked_unit:
         aliases = {
             "km/h": "km/h", "kmh": "km/h", "km/hour": "km/h", "kph": "km/h",
             "mph": "mph", "miles/hour": "mph",
+            "m/s": "m/s", "mps": "m/s", "meters/second": "m/s",
+            "metres/second": "m/s",
         }
         wanted = aliases.get(asked_unit)
         if wanted is None or wanted != unit_label:
