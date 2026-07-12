@@ -54,8 +54,8 @@ SYSTEM_PROMPTS: dict[TaskKind, str] = {
         "conclusion clearly and directly."
     ),
     TaskKind.DEBUGGING: (
-        "Identify the bug and output the corrected code in one fenced code "
-        "block, then one short sentence naming the cause."
+        "Identify the bug and output the corrected code. Add one short "
+        "sentence naming the cause."
     ),
 }
 

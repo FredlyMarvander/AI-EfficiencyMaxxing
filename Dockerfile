@@ -38,12 +38,6 @@ ENV LOCAL_GGUF_PATH=/models/${LOCAL_MODEL_FILE}
 ENV TRANSFORMERS_OFFLINE=1
 ENV HF_HUB_OFFLINE=1
 
-# Zero-token submission mode (Track 1 accuracy gate is 50%): every category
-# runs on the bundled local model; Fireworks is only a disaster fallback when
-# local inference itself fails. Delete these two lines to restore hybrid mode.
-ENV FORCE_ALL_LOCAL=1
-ENV ALLOW_ESCALATION=0
-
 COPY agent ./agent
 COPY main.py .
 

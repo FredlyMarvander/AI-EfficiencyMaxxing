@@ -45,10 +45,6 @@ class Settings:
     # Route every category to the local model (0-token play). Fireworks is
     # then only the fallback when validation rejects a local answer.
     force_all_local: bool = False
-    # When False, a local answer that fails validation is shipped anyway
-    # (after one free local retry) instead of escalating to Fireworks:
-    # guaranteed-zero-token mode for the 50% accuracy gate.
-    allow_escalation: bool = True
     fireworks_concurrency: int = DEFAULT_FIREWORKS_CONCURRENCY
     local_n_ctx: int = DEFAULT_LOCAL_N_CTX
     local_n_threads: int = 4
@@ -117,7 +113,6 @@ def load_settings() -> Settings:
         enable_local_model=_env_bool("ENABLE_LOCAL_MODEL", True),
         enable_deterministic=_env_bool("ENABLE_DETERMINISTIC", True),
         force_all_local=_env_bool("FORCE_ALL_LOCAL", False),
-        allow_escalation=_env_bool("ALLOW_ESCALATION", True),
         fireworks_concurrency=_env_int(
             "FIREWORKS_CONCURRENCY",
             DEFAULT_FIREWORKS_CONCURRENCY,

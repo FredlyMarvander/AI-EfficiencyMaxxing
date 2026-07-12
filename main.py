@@ -83,7 +83,6 @@ def _local_attempt(
         if _retry_unlikely_to_help(decision.kind, prompt)
         else (0.0, _LOCAL_RETRY_TEMPERATURE)
     )
-    first_answer: str | None = None
     for attempt, temperature in enumerate(temperatures):
         try:
             answer = local_model.complete(
@@ -98,33 +97,23 @@ def _local_attempt(
             )
             return None
 
-        if first_answer is None:
-            first_answer = answer
         if validate_local_answer(decision.kind, prompt, answer):
             return {"task_id": task_id, "answer": answer}
 
         if attempt < len(temperatures) - 1:
             logging.info(
-                "local answer for task %s failed validation; retrying locally",
+                "local answer for task %s failed validation; retrying locally "
+                "before escalating",
                 task_id,
             )
         else:
             logging.info(
-                "local answer for task %s failed validation (attempt %s/%s)",
+                "local answer for task %s failed validation (attempt %s/%s); "
+                "escalating to Fireworks",
                 task_id,
                 attempt + 1,
                 len(temperatures),
             )
-
-    if not settings.allow_escalation and first_answer is not None:
-        # Zero-token mode: an unvalidated local answer still clears the 50%
-        # accuracy gate far more cheaply than any Fireworks call. Ship the
-        # temperature-0 attempt (deterministic, most-likely decoding).
-        logging.info(
-            "task %s: shipping unvalidated local answer (escalation disabled)",
-            task_id,
-        )
-        return {"task_id": task_id, "answer": first_answer}
     return None
 
 
