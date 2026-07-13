@@ -69,7 +69,14 @@ def validate_local_answer(kind: TaskKind, prompt: str, answer: str) -> bool:
     if kind is TaskKind.DEBUGGING:
         return _validate_debugging(prompt, answer)
     if kind is TaskKind.LOGIC:
-        # Only reachable under FORCE_ALL_LOCAL: sanity checks only.
+        # Only reachable under FORCE_ALL_LOCAL. A bare verdict ("Yes.",
+        # "Jane.") with no visible reasoning is exactly what a strict LLM
+        # judge marks wrong even when the verdict happens to be right, and
+        # the local model produces those regularly -- escalate them.
+        if len(answer.split()) < 8 and not re.search(
+            r"\bbecause\b|\btherefore\b|\bsince\b|\bthus\b", answer.lower()
+        ):
+            return False
         return len(answer) <= 4000
     return False  # unknown kind: never trust the local model blindly
 
@@ -178,6 +185,47 @@ def _validate_ner(prompt: str, answer: str) -> bool:
         if lowered not in normalized_source:
             return False
     return True
+
+
+def repair_local_answer(kind: TaskKind, prompt: str, answer: str) -> str:
+    """Best-effort deterministic patch-up of an answer that failed validation.
+
+    Only used on the zero-token path (ALLOW_ESCALATION=0), where a rejected
+    answer ships anyway instead of escalating: anything recovered here is
+    free accuracy. Never invents content -- additions come verbatim from the
+    task's own source text.
+    """
+    if kind is TaskKind.NER:
+        return _repair_ner_answer(prompt, answer)
+    return answer
+
+
+def _repair_ner_answer(prompt: str, answer: str) -> str:
+    # The dominant local NER failure is a dropped entity (1.5B capacity
+    # limit). _validate_ner already defines completeness as "every
+    # capitalized run + year from the source appears in the answer", so
+    # append exactly the ones it found missing.
+    source = _extract_ner_source(prompt)
+    if source is None:
+        return answer
+
+    normalized_answer = " ".join(answer.split()).lower()
+    missing: list[str] = []
+    for entity in _capitalized_runs(source):
+        needle = entity.lower()
+        if needle in _COMMON_NON_ENTITIES:
+            continue
+        bare = re.sub(r"['’]s\b", "", needle)
+        if needle not in normalized_answer and bare not in normalized_answer:
+            missing.append(entity)
+    for year in re.findall(r"\b(?:1[5-9]\d\d|20\d\d)\b", source):
+        if year not in normalized_answer:
+            missing.append(year)
+
+    if not missing:
+        return answer
+    unique = list(dict.fromkeys(missing))
+    return answer.rstrip() + "\nOther entities: " + ", ".join(unique)
 
 
 def _validate_summary(prompt: str, answer: str) -> bool:

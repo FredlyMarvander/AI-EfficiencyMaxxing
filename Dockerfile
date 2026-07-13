@@ -38,6 +38,15 @@ ENV LOCAL_GGUF_PATH=/models/${LOCAL_MODEL_FILE}
 ENV TRANSFORMERS_OFFLINE=1
 ENV HF_HUB_OFFLINE=1
 
+# Local-first submission mode: every category tries the bundled local model,
+# and only answers our validators REJECT are escalated to Fireworks (~5.7k
+# tokens on the 215-case set vs ~15.7k for classic routing). The pure
+# zero-token variant (ALLOW_ESCALATION=0) scored BELOW the 50% accuracy gate
+# on the real judge despite passing offline checks -- never re-enable it for
+# a submission without a live-judge measurement.
+ENV FORCE_ALL_LOCAL=1
+ENV ALLOW_ESCALATION=1
+
 COPY agent ./agent
 COPY main.py .
 

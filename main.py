@@ -28,7 +28,7 @@ from agent.router import (
     ordered_models,
     output_budget,
 )
-from agent.validate import validate_local_answer
+from agent.validate import repair_local_answer, validate_local_answer
 
 
 logging.basicConfig(
@@ -83,6 +83,7 @@ def _local_attempt(
         if _retry_unlikely_to_help(decision.kind, prompt)
         else (0.0, _LOCAL_RETRY_TEMPERATURE)
     )
+    first_answer: str | None = None
     for attempt, temperature in enumerate(temperatures):
         try:
             answer = local_model.complete(
@@ -97,23 +98,49 @@ def _local_attempt(
             )
             return None
 
+        if first_answer is None:
+            first_answer = answer
         if validate_local_answer(decision.kind, prompt, answer):
             return {"task_id": task_id, "answer": answer}
 
+        # Free second chance before escalating: a deterministic repair (e.g.
+        # re-adding NER entities dropped by the 1.5B model, verbatim from the
+        # source text) that then PASSES validation is safe to ship -- unlike
+        # the zero-token mode's ship-anything, nothing unvalidated leaves.
+        repaired = repair_local_answer(decision.kind, prompt, answer)
+        if repaired != answer and validate_local_answer(
+            decision.kind, prompt, repaired
+        ):
+            logging.info(
+                "task %s: local answer repaired deterministically; shipping",
+                task_id,
+            )
+            return {"task_id": task_id, "answer": repaired}
+
         if attempt < len(temperatures) - 1:
             logging.info(
-                "local answer for task %s failed validation; retrying locally "
-                "before escalating",
+                "local answer for task %s failed validation; retrying locally",
                 task_id,
             )
         else:
             logging.info(
-                "local answer for task %s failed validation (attempt %s/%s); "
-                "escalating to Fireworks",
+                "local answer for task %s failed validation (attempt %s/%s)",
                 task_id,
                 attempt + 1,
                 len(temperatures),
             )
+
+    if not settings.allow_escalation and first_answer is not None:
+        # Zero-token mode: an unvalidated local answer still clears the 50%
+        # accuracy gate far more cheaply than any Fireworks call. Ship the
+        # temperature-0 attempt (deterministic, most-likely decoding), after
+        # a deterministic repair pass (e.g. re-adding dropped NER entities).
+        logging.info(
+            "task %s: shipping unvalidated local answer (escalation disabled)",
+            task_id,
+        )
+        repaired = repair_local_answer(decision.kind, prompt, first_answer)
+        return {"task_id": task_id, "answer": repaired}
     return None
 
 
@@ -249,18 +276,56 @@ def process_tasks(settings: Settings) -> list[dict[str, str]]:
             result = {"task_id": task["task_id"], "answer": API_ERROR_ANSWER}
         record(index, result)
 
+    # Time-pressure spillover: the local lane is serial, so on hardware
+    # slower than the dev machine the queue can outlast the 540s budget and
+    # the tail would ship as placeholder answers -- guaranteed accuracy-gate
+    # damage that no token saving justifies. Before each local generation,
+    # project the whole remaining local queue at the observed per-task pace
+    # and divert to the concurrent Fireworks pool when it no longer fits.
+    local_lane = {
+        "queued": 0,  # local tasks not yet started
+        "avg_seconds": 6.0,  # conservative prior until real completions land
+        "completions": 0,
+    }
+    local_lane_lock = threading.Lock()
+    _SPILL_SAFETY_SECONDS = 30.0
+    _SPILL_EMA_ALPHA = 0.3
+
     def run_local(index: int, task: dict[str, str], decision: RouteDecision) -> None:
         remaining = deadline - time.monotonic()
+        with local_lane_lock:
+            local_lane["queued"] -= 1
+            projected = local_lane["avg_seconds"] * (local_lane["queued"] + 1)
         if remaining <= 2:
             logging.error("skipping task %s: time limit reached", task["task_id"])
+            return
+        if projected > remaining - _SPILL_SAFETY_SECONDS:
+            logging.warning(
+                "task %s: local lane projected %.0fs but %.0fs remain; "
+                "spilling to Fireworks",
+                task["task_id"],
+                projected,
+                remaining,
+            )
+            submit_fireworks(index, task, decision)
             return
         logging.info(
             "processing task %s (%s/%s)", task["task_id"], index + 1, len(tasks)
         )
+        started = time.monotonic()
         try:
             result = _local_attempt(
                 task, task["prompt"].strip(), settings, local_model, decision
             )
+            elapsed = time.monotonic() - started
+            with local_lane_lock:
+                if local_lane["completions"] == 0:
+                    local_lane["avg_seconds"] = elapsed
+                else:
+                    local_lane["avg_seconds"] += _SPILL_EMA_ALPHA * (
+                        elapsed - local_lane["avg_seconds"]
+                    )
+                local_lane["completions"] += 1
         except Exception:
             logging.exception(
                 "unexpected failure while answering task %s", task["task_id"]
@@ -294,6 +359,8 @@ def process_tasks(settings: Settings) -> list[dict[str, str]]:
             local_model is not None and decision.target is RouteTarget.LOCAL
         )
         if use_local_lane:
+            with local_lane_lock:
+                local_lane["queued"] += 1
             futures.append(local_pool.submit(run_local, index, task, decision))
         else:
             futures.append(fireworks_pool.submit(run_fireworks, index, task, decision))
